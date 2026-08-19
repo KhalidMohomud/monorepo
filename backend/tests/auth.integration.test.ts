@@ -9,8 +9,12 @@ import { Client } from "pg";
 process.env.NODE_ENV = "test";
 const TEST_JWT_SECRET = "test-only-secret-that-is-at-least-32-characters";
 process.env.JWT_SECRET = TEST_JWT_SECRET;
+process.env.FRONTEND_URL = "http://localhost:3000";
 
-assert(process.env.DATABASE_URL, "DATABASE_URL is required for integration tests");
+assert(
+  process.env.DATABASE_URL,
+  "DATABASE_URL is required for integration tests",
+);
 
 const migrationSql = await readFile(
   new URL(
@@ -46,6 +50,11 @@ type JsonResponse = {
   };
 };
 
+const parseJsonResponse = async (response: Response) => ({
+  body: (await response.json()) as JsonResponse,
+  status: response.status,
+});
+
 test("authentication API", async (t) => {
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -73,6 +82,9 @@ test("authentication API", async (t) => {
       res.status(204).send();
     },
   );
+  rbacApp.get("/error", () => {
+    throw new Error("SENSITIVE_STACK_MARKER");
+  });
   rbacApp.use(errorHandler);
 
   const rbacServer = rbacApp.listen(0, "127.0.0.1");
@@ -92,10 +104,7 @@ test("authentication API", async (t) => {
       body: JSON.stringify(body),
     });
 
-    return {
-      body: (await response.json()) as JsonResponse,
-      status: response.status,
-    };
+    return parseJsonResponse(response);
   };
 
   const requestMe = async (authorization?: string) => {
@@ -103,10 +112,7 @@ test("authentication API", async (t) => {
       headers: authorization ? { authorization } : undefined,
     });
 
-    return {
-      body: (await response.json()) as JsonResponse,
-      status: response.status,
-    };
+    return parseJsonResponse(response);
   };
 
   const requestRbacRoute = (route: "/admin" | "/operations", token: string) =>
@@ -130,6 +136,72 @@ test("authentication API", async (t) => {
   const password = "StrongPassword123";
   let staffUserId = "";
   let staffAccessToken = "";
+
+  await t.test("applies Helmet and fixes CORS to FRONTEND_URL", async () => {
+    const allowedResponse = await fetch(`${apiBaseUrl}/health`, {
+      headers: { origin: process.env.FRONTEND_URL },
+    });
+    const disallowedResponse = await fetch(`${apiBaseUrl}/health`, {
+      headers: { origin: "https://untrusted.example" },
+    });
+
+    assert.equal(
+      allowedResponse.headers.get("x-content-type-options"),
+      "nosniff",
+    );
+    assert.equal(
+      allowedResponse.headers.get("access-control-allow-origin"),
+      process.env.FRONTEND_URL,
+    );
+    assert.equal(
+      disallowedResponse.headers.get("access-control-allow-origin"),
+      process.env.FRONTEND_URL,
+    );
+    assert.notEqual(
+      disallowedResponse.headers.get("access-control-allow-origin"),
+      "https://untrusted.example",
+    );
+    assert.notEqual(
+      disallowedResponse.headers.get("access-control-allow-origin"),
+      "*",
+    );
+  });
+
+  await t.test("does not expose unhandled error details", async () => {
+    const response = await fetch(`${rbacBaseUrl}/error`);
+    const result = await parseJsonResponse(response);
+
+    assert.equal(result.status, 500);
+    assert.equal(result.body.error?.code, "INTERNAL_SERVER_ERROR");
+    assert.equal(
+      JSON.stringify(result.body).includes("SENSITIVE_STACK_MARKER"),
+      false,
+    );
+  });
+
+  await t.test("rejects malformed JSON as a client error", async () => {
+    const response = await fetch(`${baseUrl}/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{",
+    });
+    const result = await parseJsonResponse(response);
+
+    assert.equal(result.status, 400);
+    assert.equal(result.body.error?.code, "INVALID_JSON");
+  });
+
+  await t.test("rejects JSON bodies larger than 100kb", async () => {
+    const response = await fetch(`${baseUrl}/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "x".repeat(110_000) }),
+    });
+    const result = await parseJsonResponse(response);
+
+    assert.equal(result.status, 413);
+    assert.equal(result.body.error?.code, "PAYLOAD_TOO_LARGE");
+  });
 
   await t.test("registers a staff user", async () => {
     const response = await request("/register", {

@@ -40,6 +40,26 @@ cd backend
 npm run prisma:migrate:dev
 ```
 
+For reviewer/demo accounts, run the seed and enter development-only passwords
+when prompted. Input is hidden and the passwords are not written to a file:
+
+```bash
+cd backend
+npm run db:seed
+```
+
+For non-interactive environments such as CI, provide `SEED_ADMIN_PASSWORD` and
+`SEED_STAFF_PASSWORD` through the environment or secret manager running the
+command. Do not commit either value.
+
+The command safely creates or updates these accounts and can be run repeatedly:
+
+- `admin@merhaba.test` (`ADMIN`)
+- `staff@merhaba.test` (`STAFF`)
+
+Passwords are hashed before they are stored. No menu, table, or order demo data
+is added by this seed.
+
 Generate Prisma Client after future schema changes:
 
 ```bash
