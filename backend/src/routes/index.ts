@@ -8,6 +8,7 @@ import { healthRouter } from "./health.routes.js";
 import { menuItemRouter } from "./menu-item.routes.js";
 import { orderRouter } from "./order.routes.js";
 import { restaurantTableRouter } from "./restaurant-table.routes.js";
+import { userRouter } from "./user.routes.js";
 
 export const apiRouter = Router();
 
@@ -19,3 +20,4 @@ apiRouter.use("/V1/menu-items", menuItemRouter);
 apiRouter.use("/V1/tables", restaurantTableRouter);
 apiRouter.use("/V1/orders", orderRouter);
 apiRouter.use("/V1/dashboard", dashboardRouter);
+apiRouter.use("/V1/users", userRouter);

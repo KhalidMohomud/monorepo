@@ -36,8 +36,11 @@ environment configuration. Refresh tokens are outside the current MVP scope.
 ## Role assignment
 
 Public registration always creates a `STAFF` user. It never accepts a requested
-role, preventing public privilege escalation. Administrator accounts are created
-through the controlled reviewer/demo seed until user management is implemented.
+role, preventing public privilege escalation. Administrator accounts can be
+created only by an authenticated administrator or through the controlled
+reviewer/demo seed. The Admin API prevents self-deletion and self-demotion, and
+user records referenced by order history are retained by the database foreign
+key.
 
 ## Historical order item snapshots
 

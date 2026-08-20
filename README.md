@@ -6,7 +6,7 @@ Merhaba Order Desk is a Restaurant Operations MVP intended to help restaurant
 staff manage menus, tables, and customer orders. The repository currently
 contains the Day 1 security and database foundation, the Day 2 category,
 menu-item, and table workflows, the Day 3 order-management backend, and the
-Day 4 dashboard overview backend.
+Day 4 dashboard overview and administrator user-management backends.
 
 ## Current Status
 
@@ -18,9 +18,9 @@ tables, while staff receive only available menu items.
 
 The frontend includes login and role-aware screens for the Day 2 workflows. The
 backend supports order creation, line-item changes, totals, status transitions,
-history filters, active-order table assignment, and dashboard overview metrics.
-The order and dashboard interfaces, payments, and reporting are not implemented
-yet.
+history filters, active-order table assignment, dashboard overview metrics, and
+administrator-managed user accounts. The order, dashboard, and user-management
+interfaces, payments, and reporting are not implemented yet.
 
 ## Tech Stack
 
@@ -236,7 +236,8 @@ Authorization: Bearer <access-token>
 Two roles exist:
 
 - `ADMIN` — manages categories and menu items and can access operational order
-  and table routes.
+  and table routes. Administrators can also create and manage staff or other
+  administrator accounts through the protected user API.
 - `STAFF` — intended for daily restaurant operations. Public registration is
   deliberately restricted to this role and cannot create an administrator.
 
@@ -318,6 +319,24 @@ The response contains operational data only and never includes user credentials
 or password hashes. Quick-navigation links belong to the future frontend and do
 not require a backend endpoint.
 
+## Admin User API
+
+All user-management routes require an `ADMIN` bearer token. Public registration
+remains restricted to creating `STAFF` accounts.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/V1/users` | List safe user profiles; accepts an optional `role` filter. |
+| `GET` | `/api/V1/users/:id` | Get one safe user profile. |
+| `POST` | `/api/V1/users` | Create a user; the role defaults to `STAFF`. |
+| `PATCH` | `/api/V1/users/:id` | Update name, email, password, or role. |
+| `DELETE` | `/api/V1/users/:id` | Delete a user without order history. |
+
+Passwords are hashed with the same production utility used by registration.
+Responses select only public fields and never include `passwordHash`.
+Administrators cannot delete themselves or remove their own administrator role,
+and users linked to historical orders cannot be deleted.
+
 ## Quality Checks
 
 Backend:
@@ -350,15 +369,21 @@ npm run build
   tests — complete. The Day 3 frontend is intentionally pending.
 - Day 4 backend: protected dashboard overview metrics and recent-order data —
   complete. The dashboard frontend is intentionally pending.
+- Backend administration: Admin-only user listing, creation, updates, role
+  assignment, password replacement, and safe deletion — complete. The
+  user-management frontend is intentionally pending.
 
 ## Known Limitations
 
 - Authentication uses short-lived access tokens without refresh tokens.
+- Role changes and account deletion do not revoke an already-issued stateless
+  token; access ends when that short-lived token expires.
 - The frontend keeps the access token in session storage; it is cleared when the
   browser session ends and is not shared between tabs.
-- Public registration creates `STAFF` accounts only; user administration is not
-  implemented.
-- Order management and dashboard overview have no frontend screens yet.
+- Public registration creates `STAFF` accounts only; only an authenticated
+  administrator can assign the `ADMIN` role.
+- Order management, dashboard overview, and user management have no frontend
+  screens yet.
 - Order totals currently have no tax, discount, service-charge, or payment
   processing logic; `total` equals `subtotal` for this MVP.
 - Date filtering uses UTC calendar days.
@@ -367,7 +392,7 @@ npm run build
 
 ## Upcoming Work
 
-The next step is to build the order and dashboard frontend screens using the
-existing APIs, followed by responsive and error-state polish. Payments,
-inventory, real-time updates, and advanced reservation workflows remain outside
-the MVP unless the assessment scope changes.
+The next step is to build the user-management, order, and dashboard frontend
+screens using the existing APIs, followed by responsive and error-state polish.
+Payments, inventory, real-time updates, and advanced reservation workflows
+remain outside the MVP unless the assessment scope changes.

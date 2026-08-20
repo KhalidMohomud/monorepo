@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const emailSchema = z
+export const emailSchema = z
   .string()
   .trim()
   .toLowerCase()
@@ -9,15 +9,19 @@ const emailSchema = z
 const bcryptPasswordLimit = (password: string): boolean =>
   Buffer.byteLength(password, "utf8") <= 72;
 
+export const userNameSchema = z.string().trim().min(2).max(100);
+
+export const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(72)
+  .refine(bcryptPasswordLimit, "Password must not exceed 72 bytes");
+
 export const registerSchema = z
   .object({
-    name: z.string().trim().min(2).max(100),
+    name: userNameSchema,
     email: emailSchema,
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(72)
-      .refine(bcryptPasswordLimit, "Password must not exceed 72 bytes"),
+    password: passwordSchema,
   })
   .strict();
 
