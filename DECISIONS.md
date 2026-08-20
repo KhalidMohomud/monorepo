@@ -73,3 +73,11 @@ cancellation allowed before an order is served. Completed orders cannot be
 edited. PostgreSQL enforces one active order per table with a partial unique
 index, and the service marks the table occupied or available in the same
 transaction as order lifecycle changes.
+
+## Dashboard as a read model
+
+The dashboard has one protected overview endpoint instead of several metric
+routes. Its service reads counts, grouped statuses, paid revenue, and recent
+orders in one database transaction, giving the client a consistent operational
+snapshot without moving display concerns into controllers. Calendar-based
+metrics use UTC until a restaurant business-timezone setting is introduced.

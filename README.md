@@ -5,7 +5,8 @@
 Merhaba Order Desk is a Restaurant Operations MVP intended to help restaurant
 staff manage menus, tables, and customer orders. The repository currently
 contains the Day 1 security and database foundation, the Day 2 category,
-menu-item, and table workflows, and the Day 3 order-management backend.
+menu-item, and table workflows, the Day 3 order-management backend, and the
+Day 4 dashboard overview backend.
 
 ## Current Status
 
@@ -15,10 +16,11 @@ PostgreSQL migration, and integration tests are in place. Administrators can
 manage categories and menu items. Administrators and staff can manage restaurant
 tables, while staff receive only available menu items.
 
-The frontend includes login and role-aware screens for those Day 2 workflows.
-The backend supports order creation, line-item changes, totals, status
-transitions, history filters, and active-order table assignment. The order UI,
-payments, reporting, and dashboard metrics are not implemented yet.
+The frontend includes login and role-aware screens for the Day 2 workflows. The
+backend supports order creation, line-item changes, totals, status transitions,
+history filters, active-order table assignment, and dashboard overview metrics.
+The order and dashboard interfaces, payments, and reporting are not implemented
+yet.
 
 ## Tech Stack
 
@@ -295,6 +297,27 @@ PENDING -> PREPARING -> READY -> SERVED -> PAID
      +----------+----------+-> CANCELLED
 ```
 
+## Dashboard API
+
+The overview route requires an `ADMIN` or `STAFF` bearer token:
+
+```http
+GET /api/V1/dashboard/overview
+```
+
+It returns:
+
+- occupied and total table counts;
+- total active orders;
+- active-order counts for `PENDING`, `PREPARING`, `READY`, and `SERVED`;
+- today's order count;
+- today's revenue from orders paid during the current UTC day; and
+- the five most recent orders with table number, status, item count, and total.
+
+The response contains operational data only and never includes user credentials
+or password hashes. Quick-navigation links belong to the future frontend and do
+not require a backend endpoint.
+
 ## Quality Checks
 
 Backend:
@@ -325,6 +348,8 @@ npm run build
 - Day 3 backend: order creation, line-item management, totals, status
   transitions, table assignment, database invariants, filters, and integration
   tests — complete. The Day 3 frontend is intentionally pending.
+- Day 4 backend: protected dashboard overview metrics and recent-order data —
+  complete. The dashboard frontend is intentionally pending.
 
 ## Known Limitations
 
@@ -333,7 +358,7 @@ npm run build
   browser session ends and is not shared between tabs.
 - Public registration creates `STAFF` accounts only; user administration is not
   implemented.
-- Order management has no frontend screen yet.
+- Order management and dashboard overview have no frontend screens yet.
 - Order totals currently have no tax, discount, service-charge, or payment
   processing logic; `total` equals `subtotal` for this MVP.
 - Date filtering uses UTC calendar days.
@@ -342,7 +367,7 @@ npm run build
 
 ## Upcoming Work
 
-The next step is the Day 3 order-management frontend, followed by the Day 4
-dashboard and polish work. Payments, inventory, real-time updates, and advanced
-reservation workflows remain outside the MVP unless the assessment scope
-changes.
+The next step is to build the order and dashboard frontend screens using the
+existing APIs, followed by responsive and error-state polish. Payments,
+inventory, real-time updates, and advanced reservation workflows remain outside
+the MVP unless the assessment scope changes.
