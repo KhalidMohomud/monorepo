@@ -5,7 +5,7 @@ import { emitKeypressEvents } from "node:readline";
 import { z } from "zod";
 
 import { PrismaClient } from "../src/generated/prisma/client.js";
-import { Role } from "../src/generated/prisma/enums.js";
+import { Role, TableStatus } from "../src/generated/prisma/enums.js";
 import { hashPassword } from "../src/utils/password.js";
 
 const bcryptPasswordLimit = (password: string): boolean =>
@@ -36,6 +36,67 @@ const adapter = new PrismaPg({
   connectionString: seedEnvironment.DATABASE_URL,
 });
 const prisma = new PrismaClient({ adapter });
+
+const categorySeedData = [
+  { name: "Starters", description: "Small plates and appetizers" },
+  { name: "Main Course", description: "Restaurant main dishes" },
+  { name: "Drinks", description: "Hot and cold beverages" },
+  { name: "Desserts", description: "Sweet finishes" },
+] as const;
+
+const menuItemSeedData = [
+  {
+    categoryName: "Starters",
+    name: "Lentil Soup",
+    description: "Red lentils with mild spices",
+    price: "4.50",
+  },
+  {
+    categoryName: "Starters",
+    name: "Hummus",
+    description: "Chickpeas, tahini, and olive oil",
+    price: "5.00",
+  },
+  {
+    categoryName: "Main Course",
+    name: "Grilled Chicken",
+    description: "Grilled chicken with seasonal vegetables",
+    price: "12.50",
+  },
+  {
+    categoryName: "Main Course",
+    name: "Beef Burger",
+    description: "Beef patty, salad, and house sauce",
+    price: "10.75",
+  },
+  {
+    categoryName: "Drinks",
+    name: "Turkish Tea",
+    description: "Freshly brewed black tea",
+    price: "2.00",
+  },
+  {
+    categoryName: "Drinks",
+    name: "Fresh Lime",
+    description: "Fresh lime juice served chilled",
+    price: "4.50",
+  },
+  {
+    categoryName: "Desserts",
+    name: "Baklava",
+    description: "Layered pastry with pistachios",
+    price: "5.50",
+  },
+] as const;
+
+const tableSeedData = [
+  { tableNumber: 1, capacity: 2 },
+  { tableNumber: 2, capacity: 2 },
+  { tableNumber: 3, capacity: 4 },
+  { tableNumber: 4, capacity: 4 },
+  { tableNumber: 5, capacity: 6 },
+  { tableNumber: 6, capacity: 8 },
+] as const;
 
 type Keypress = {
   ctrl?: boolean;
@@ -142,40 +203,101 @@ const seed = async (): Promise<void> => {
     hashPassword(staffPassword),
   ]);
 
-  const users = await prisma.$transaction([
-    prisma.user.upsert({
-      where: { email: "admin@merhaba.test" },
-      update: {
-        name: "Merhaba Admin",
-        passwordHash: adminPasswordHash,
-        role: Role.ADMIN,
-      },
-      create: {
-        name: "Merhaba Admin",
-        email: "admin@merhaba.test",
-        passwordHash: adminPasswordHash,
-        role: Role.ADMIN,
-      },
-      select: { email: true, role: true },
-    }),
-    prisma.user.upsert({
-      where: { email: "staff@merhaba.test" },
-      update: {
-        name: "Merhaba Staff",
-        passwordHash: staffPasswordHash,
-        role: Role.STAFF,
-      },
-      create: {
-        name: "Merhaba Staff",
-        email: "staff@merhaba.test",
-        passwordHash: staffPasswordHash,
-        role: Role.STAFF,
-      },
-      select: { email: true, role: true },
-    }),
-  ]);
+  const result = await prisma.$transaction(async (transaction) => {
+    const categories = await Promise.all(
+      categorySeedData.map((category) =>
+        transaction.category.upsert({
+          where: { name: category.name },
+          update: { description: category.description },
+          create: category,
+          select: { id: true, name: true },
+        }),
+      ),
+    );
+    const categoryIds = new Map(
+      categories.map((category) => [category.name, category.id]),
+    );
 
-  console.info("Database seed completed", { users });
+    const users = await Promise.all([
+      transaction.user.upsert({
+        where: { email: "admin@merhaba.test" },
+        update: {
+          name: "Merhaba Admin",
+          passwordHash: adminPasswordHash,
+          role: Role.ADMIN,
+        },
+        create: {
+          name: "Merhaba Admin",
+          email: "admin@merhaba.test",
+          passwordHash: adminPasswordHash,
+          role: Role.ADMIN,
+        },
+        select: { email: true, role: true },
+      }),
+      transaction.user.upsert({
+        where: { email: "staff@merhaba.test" },
+        update: {
+          name: "Merhaba Staff",
+          passwordHash: staffPasswordHash,
+          role: Role.STAFF,
+        },
+        create: {
+          name: "Merhaba Staff",
+          email: "staff@merhaba.test",
+          passwordHash: staffPasswordHash,
+          role: Role.STAFF,
+        },
+        select: { email: true, role: true },
+      }),
+    ]);
+
+    const menuItems = await Promise.all(
+      menuItemSeedData.map((menuItem) => {
+        const categoryId = categoryIds.get(menuItem.categoryName);
+
+        if (!categoryId) {
+          throw new Error(`Seed category not found: ${menuItem.categoryName}`);
+        }
+
+        const data = {
+          categoryId,
+          name: menuItem.name,
+          description: menuItem.description,
+          price: menuItem.price,
+          isAvailable: true,
+        };
+
+        return transaction.menuItem.upsert({
+          where: {
+            categoryId_name: { categoryId, name: menuItem.name },
+          },
+          update: data,
+          create: data,
+          select: { id: true },
+        });
+      }),
+    );
+
+    const tables = await Promise.all(
+      tableSeedData.map((table) =>
+        transaction.restaurantTable.upsert({
+          where: { tableNumber: table.tableNumber },
+          update: { capacity: table.capacity },
+          create: { ...table, status: TableStatus.AVAILABLE },
+          select: { id: true },
+        }),
+      ),
+    );
+
+    return {
+      users,
+      categories: categories.length,
+      menuItems: menuItems.length,
+      tables: tables.length,
+    };
+  });
+
+  console.info("Database seed completed", result);
 };
 
 try {

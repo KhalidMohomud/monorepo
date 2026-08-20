@@ -109,6 +109,6 @@ model OrderItem {
   order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  @@index([orderId])
+  @@unique([orderId, menuItemId])
   @@index([menuItemId])
 }

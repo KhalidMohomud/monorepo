@@ -1,7 +1,8 @@
 # Technical Decisions
 
-This file records the main Day 1 decisions for Merhaba Order Desk. It is kept
-short so the architecture remains easy to discuss and change during the MVP.
+This file records the main Day 1 through Day 3 decisions for Merhaba Order Desk.
+It is kept short so the architecture remains easy to discuss and change during
+the MVP.
 
 ## Separate frontend and backend applications
 
@@ -43,3 +44,32 @@ through the controlled reviewer/demo seed until user management is implemented.
 `OrderItem` stores `itemName` and `unitPrice` snapshots in addition to its
 `MenuItem` relationship. A later menu rename or price change therefore cannot
 alter the historical meaning or totals of an existing order.
+
+## Day 2 authorization boundaries
+
+Category and menu-item writes are administrator operations. Staff can read only
+available menu items, and that restriction is enforced in the service layer so
+it cannot be bypassed by changing the UI. Both roles can manage table state for
+day-to-day restaurant operations.
+
+## Money at the API boundary
+
+Prisma and PostgreSQL keep menu prices as fixed-precision decimals. The API
+serializes those values as strings, avoiding implicit JavaScript floating-point
+conversion while keeping request and response contracts straightforward.
+
+## Server-owned order totals
+
+Order requests contain menu-item IDs and quantities, never prices or totals.
+The service reads the current menu price, stores name and price snapshots, and
+calculates line totals, subtotal, and total with Prisma decimals. Item and total
+changes occur in one transaction so partial updates cannot leave inconsistent
+money values.
+
+## Order lifecycle and table assignment
+
+Status transitions follow one forward path from `PENDING` to `PAID`, with
+cancellation allowed before an order is served. Completed orders cannot be
+edited. PostgreSQL enforces one active order per table with a partial unique
+index, and the service marks the table occupied or available in the same
+transaction as order lifecycle changes.

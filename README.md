@@ -4,18 +4,21 @@
 
 Merhaba Order Desk is a Restaurant Operations MVP intended to help restaurant
 staff manage menus, tables, and customer orders. The repository currently
-contains the Day 1 technical foundation: a minimal web client, a secured API,
-the relational database schema, and reviewer/demo account seeding.
+contains the Day 1 security and database foundation, the Day 2 category,
+menu-item, and table workflows, and the Day 3 order-management backend.
 
 ## Current Status
 
-Day 1 is complete. The backend exposes a health check, registration, login, and
-current-user endpoints. Password hashing, JWT authentication, role-based access
-control, request validation, centralized error handling, Prisma configuration,
-the initial PostgreSQL migration, and integration tests are in place.
+Day 1 and Day 2 are complete. The Day 3 backend is complete. Authentication, role-based authorization, request
+validation, centralized error handling, Prisma configuration, the initial
+PostgreSQL migration, and integration tests are in place. Administrators can
+manage categories and menu items. Administrators and staff can manage restaurant
+tables, while staff receive only available menu items.
 
-The frontend is intentionally a minimal Next.js foundation. Menu, table, order,
-and dashboard interfaces and APIs have not been implemented.
+The frontend includes login and role-aware screens for those Day 2 workflows.
+The backend supports order creation, line-item changes, totals, status
+transitions, history filters, and active-order table assignment. The order UI,
+payments, reporting, and dashboard metrics are not implemented yet.
 
 ## Tech Stack
 
@@ -83,7 +86,11 @@ merhaba-order-desk/
 │   ├── .env.example
 │   └── package.json
 ├── frontend/
-│   ├── src/app/
+│   ├── src/
+│   │   ├── app/
+│   │   ├── components/
+│   │   └── lib/
+│   ├── .env.example
 │   └── package.json
 ├── .gitignore
 ├── DECISIONS.md
@@ -132,6 +139,11 @@ cp backend/.env.example backend/.env
 Never commit `backend/.env` or real credentials. The application exits during
 startup if required configuration is missing or invalid.
 
+The frontend defaults to `http://localhost:4000/api`. To override it, create
+`frontend/.env.local` from `frontend/.env.example` and set
+`NEXT_PUBLIC_API_URL` to the public API base URL. Variables prefixed with
+`NEXT_PUBLIC_` are included in the browser bundle and must never contain secrets.
+
 ## Database Setup
 
 Run Prisma commands from the backend package:
@@ -156,7 +168,7 @@ cd backend
 npm run prisma:migrate:deploy
 ```
 
-Seed the two reviewer/demo accounts interactively:
+Seed the reviewer/demo accounts and small Day 2 dataset interactively:
 
 ```bash
 cd backend
@@ -221,8 +233,8 @@ Authorization: Bearer <access-token>
 
 Two roles exist:
 
-- `ADMIN` — intended for administrative operations such as user and menu
-  management when those features are implemented.
+- `ADMIN` — manages categories and menu items and can access operational order
+  and table routes.
 - `STAFF` — intended for daily restaurant operations. Public registration is
   deliberately restricted to this role and cannot create an administrator.
 
@@ -236,7 +248,52 @@ After `npm run db:seed`, these accounts exist:
 | `staff@merhaba.test` | `STAFF` | Chosen securely during seeding |
 
 No plaintext demo password is stored in the repository. The seed is idempotent,
-and rerunning it updates the account names, roles, and password hashes.
+and rerunning it updates the account names, roles, password hashes, categories,
+menu items, and table definitions without creating duplicates.
+
+## Day 2 API
+
+All routes below require a bearer token.
+
+| Resource | Routes | Access |
+| --- | --- | --- |
+| Categories | `GET/POST /api/V1/categories`, `GET/PATCH/DELETE /api/V1/categories/:id` | `ADMIN` |
+| Menu items | `GET /api/V1/menu-items`, `GET /api/V1/menu-items/:id` | `ADMIN`, `STAFF` |
+| Menu items | `POST /api/V1/menu-items`, `PATCH/DELETE /api/V1/menu-items/:id` | `ADMIN` |
+| Tables | `GET/POST /api/V1/tables`, `GET/PATCH/DELETE /api/V1/tables/:id` | `ADMIN`, `STAFF` |
+| Table status | `PATCH /api/V1/tables/:id/status` | `ADMIN`, `STAFF` |
+
+For staff callers, menu-item reads are restricted on the server to available
+items. Monetary values are returned as decimal strings so the JSON boundary
+does not introduce floating-point rounding.
+
+## Day 3 Order API
+
+Order routes require an `ADMIN` or `STAFF` bearer token.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/V1/orders` | Create an order for a table with initial items. |
+| `GET` | `/api/V1/orders` | List orders; supports `status`, `active`, and UTC `date` filters. |
+| `GET` | `/api/V1/orders/:id` | Get an order with table, creator, and item snapshots. |
+| `POST` | `/api/V1/orders/:id/items` | Add an available menu item. |
+| `PATCH` | `/api/V1/orders/:id/items/:itemId` | Change an item quantity. |
+| `DELETE` | `/api/V1/orders/:id/items/:itemId` | Remove an item while keeping at least one line. |
+| `PATCH` | `/api/V1/orders/:id/status` | Apply a valid order status transition. |
+
+The server reads names and prices from menu items, stores snapshots, calculates
+line totals and order totals, and performs related writes in transactions.
+Clients cannot supply monetary totals. A table can have only one active order.
+Creating an order marks its table `OCCUPIED`; paying or cancelling it releases
+the table to `AVAILABLE`.
+
+Status progression is:
+
+```text
+PENDING -> PREPARING -> READY -> SERVED -> PAID
+    \          \          \
+     +----------+----------+-> CANCELLED
+```
 
 ## Quality Checks
 
@@ -246,7 +303,7 @@ Backend:
 cd backend
 npm run type-check
 npm run prisma:validate
-npm run test:auth
+npm test
 npm run build
 ```
 
@@ -259,43 +316,33 @@ npm run type-check
 npm run build
 ```
 
-The backend authentication suite uses an isolated in-memory PostgreSQL-compatible
-database and does not require the configured development database.
-
 ## Development Progress
 
-Completed during Day 1:
-
-- [x] Separate Next.js and Express project foundations
-- [x] PostgreSQL and Prisma schema for the complete MVP domain
-- [x] Initial database migration and reusable Prisma Client
-- [x] Environment validation
-- [x] Password hashing and JWT utilities
-- [x] Registration and login API
-- [x] Protected current-user endpoint
-- [x] Reusable `ADMIN`/`STAFF` authorization middleware
-- [x] Idempotent reviewer/demo user seed
-- [x] Security-focused error handling and authentication integration tests
+- Day 1: project foundation, relational schema, authentication, RBAC, validation,
+  error handling, migrations, and secure account seeding — complete.
+- Day 2: category management, menu-item management, table management, role-aware
+  frontend screens, domain seed data, and integration tests — complete.
+- Day 3 backend: order creation, line-item management, totals, status
+  transitions, table assignment, database invariants, filters, and integration
+  tests — complete. The Day 3 frontend is intentionally pending.
 
 ## Known Limitations
 
-- The frontend has no authentication UI or operational screens yet.
-- Menu, table, and order business APIs are not implemented.
-- Dashboard functionality is not implemented.
-- Registration/login use the `/api/V1/auth` prefix while `/me` currently uses
-  `/api/auth`; route versioning should be standardized before client expansion.
-- Access tokens are short-lived but there is no refresh-token or revocation
-  system in this MVP.
-- Login rate limiting is not implemented and should be added before exposing the
-  API publicly.
-- Previously exposed credentials must be rotated and repository history reviewed
-  before a production deployment; current tracked examples contain no secrets.
+- Authentication uses short-lived access tokens without refresh tokens.
+- The frontend keeps the access token in session storage; it is cleared when the
+  browser session ends and is not shared between tabs.
+- Public registration creates `STAFF` accounts only; user administration is not
+  implemented.
+- Order management has no frontend screen yet.
+- Order totals currently have no tax, discount, service-charge, or payment
+  processing logic; `total` equals `subtotal` for this MVP.
+- Date filtering uses UTC calendar days.
+- Reservation workflows beyond the table status are outside the assessment
+  scope.
 
 ## Upcoming Work
 
-- Menu Management
-- Table Management
-- Order Management
-- Dashboard and operational frontend workflows
-
-These items are planned only and are not part of the current implementation.
+The next step is the Day 3 order-management frontend, followed by the Day 4
+dashboard and polish work. Payments, inventory, real-time updates, and advanced
+reservation workflows remain outside the MVP unless the assessment scope
+changes.
