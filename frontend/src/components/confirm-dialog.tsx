@@ -4,6 +4,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   description: string;
   loading?: boolean;
+  loadingLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
   open: boolean;
@@ -15,6 +16,7 @@ export function ConfirmDialog({
   confirmLabel = "Delete",
   description,
   loading = false,
+  loadingLabel = "Deleting…",
   onCancel,
   onConfirm,
   open,
@@ -70,7 +72,7 @@ export function ConfirmDialog({
             disabled={loading}
             className="h-11 rounded-lg bg-red-600 px-5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
           >
-            {loading ? "Deleting…" : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </section>

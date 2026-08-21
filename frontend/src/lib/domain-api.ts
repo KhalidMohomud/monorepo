@@ -2,6 +2,8 @@ import { apiRequest } from "./api";
 import type {
   Category,
   MenuItem,
+  Order,
+  OrderStatus,
   RestaurantTable,
   Role,
   TableStatus,
@@ -36,6 +38,11 @@ type CreateUserInput = {
 };
 
 type UpdateUserInput = Partial<CreateUserInput>;
+
+type OrderLineInput = {
+  menuItemId: string;
+  quantity: number;
+};
 
 export const categoryApi = {
   list: (token: string) =>
@@ -137,5 +144,46 @@ export const userApi = {
     apiRequest<void>(`/V1/users/${id}`, {
       method: "DELETE",
       token,
+    }),
+};
+
+export const orderApi = {
+  list: (token: string, active: boolean) =>
+    apiRequest<{ data: { orders: Order[] } }>(
+      `/V1/orders?active=${String(active)}`,
+      { token },
+    ),
+  create: (token: string, tableId: string, items: OrderLineInput[]) =>
+    apiRequest<{ data: { order: Order } }>("/V1/orders", {
+      method: "POST",
+      token,
+      body: { tableId, items },
+    }),
+  addItem: (token: string, orderId: string, item: OrderLineInput) =>
+    apiRequest<{ data: { order: Order } }>(`/V1/orders/${orderId}/items`, {
+      method: "POST",
+      token,
+      body: item,
+    }),
+  updateItem: (
+    token: string,
+    orderId: string,
+    itemId: string,
+    quantity: number,
+  ) =>
+    apiRequest<{ data: { order: Order } }>(
+      `/V1/orders/${orderId}/items/${itemId}`,
+      { method: "PATCH", token, body: { quantity } },
+    ),
+  removeItem: (token: string, orderId: string, itemId: string) =>
+    apiRequest<{ data: { order: Order } }>(
+      `/V1/orders/${orderId}/items/${itemId}`,
+      { method: "DELETE", token },
+    ),
+  updateStatus: (token: string, orderId: string, status: OrderStatus) =>
+    apiRequest<{ data: { order: Order } }>(`/V1/orders/${orderId}/status`, {
+      method: "PATCH",
+      token,
+      body: { status },
     }),
 };

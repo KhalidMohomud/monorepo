@@ -23,7 +23,11 @@ function SidebarContent({ onClose, pathname, role }: SidebarContentProps) {
     items
       .filter((item) => !item.adminOnly || role === "ADMIN")
       .map((item) => {
-        const active = item.href === pathname;
+        const active = item.href
+          ? item.href === "/"
+            ? pathname === "/"
+            : pathname === item.href || pathname.startsWith(`${item.href}/`)
+          : false;
         const className = `flex min-h-11 w-full items-center gap-3.5 rounded-xl px-4 text-[15px] font-bold transition ${
           active
             ? "bg-[linear-gradient(135deg,#f0b44d,#e9a12c)] text-[#5a4018] shadow-[0_6px_14px_rgba(172,112,20,0.18)]"
@@ -73,15 +77,14 @@ function SidebarContent({ onClose, pathname, role }: SidebarContentProps) {
       </div>
 
       <div className="px-6 pb-7">
-        <button
-          type="button"
-          disabled
-          title="Order creation screen is coming next"
-          className="flex h-12 w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#f1b64d,#eaa12d)] text-base font-bold text-white opacity-80 shadow-[0_6px_14px_rgba(172,112,20,0.18)]"
+        <Link
+          href="/orders/new"
+          onClick={onClose}
+          className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#f1b64d,#eaa12d)] text-base font-bold text-white shadow-[0_6px_14px_rgba(172,112,20,0.18)] transition hover:bg-[linear-gradient(135deg,#eaaa3b,#dd9421)]"
         >
           <Icon name="plus" className="size-5" />
           New Order
-        </button>
+        </Link>
       </div>
 
       <nav className="flex flex-1 flex-col px-5" aria-label="Main navigation">

@@ -37,7 +37,7 @@ export function TableFilters({ filter, onChange, tables }: TableFiltersProps) {
 
   return (
     <div
-      className="mt-5 flex gap-2 overflow-x-auto pb-1"
+      className="mt-8 flex gap-3 overflow-x-auto pb-2"
       aria-label="Filter tables by status"
     >
       {options.map((option) => {
@@ -49,7 +49,7 @@ export function TableFilters({ filter, onChange, tables }: TableFiltersProps) {
             type="button"
             onClick={() => onChange(option.value)}
             aria-pressed={active}
-            className={`shrink-0 rounded-full border px-3.5 py-1 text-xs font-semibold transition ${getFilterStyle(option.value, active)}`}
+            className={`shrink-0 rounded-full border px-5 py-2.5 text-sm font-semibold transition ${getFilterStyle(option.value, active)}`}
           >
             {option.label} ({option.count})
           </button>

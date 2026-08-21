@@ -57,3 +57,40 @@ export type RestaurantTable = {
     createdAt: string;
   } | null;
 };
+
+export const ORDER_STATUSES = [
+  "PENDING",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "PAID",
+  "CANCELLED",
+] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export type OrderItem = {
+  id: string;
+  orderId: string;
+  menuItemId: string;
+  itemName: string;
+  unitPrice: string;
+  quantity: number;
+  lineTotal: string;
+  createdAt: string;
+};
+
+export type Order = {
+  id: string;
+  tableId: string;
+  createdById: string;
+  status: OrderStatus;
+  subtotal: string;
+  total: string;
+  createdAt: string;
+  updatedAt: string;
+  paidAt: string | null;
+  table: Pick<RestaurantTable, "id" | "tableNumber" | "capacity" | "status">;
+  createdBy: AuthUser;
+  items: OrderItem[];
+};

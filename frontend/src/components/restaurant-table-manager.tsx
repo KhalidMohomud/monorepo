@@ -12,23 +12,23 @@ export function RestaurantTableManager() {
   const tableState = useRestaurantTables();
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] px-4 py-6 sm:px-6 lg:px-7 lg:py-7">
-      <div className="mx-auto max-w-[1380px]">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <main className="min-h-[calc(100vh-3.5rem)] px-4 py-7 sm:px-7 lg:px-9 lg:py-9">
+      <div className="mx-auto max-w-[1600px]">
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-[#292622]">
+            <h1 className="text-4xl font-extrabold tracking-tight text-[#292622]">
               Tables
             </h1>
-            <p className="mt-1 text-sm text-[#696158]">
+            <p className="mt-2 text-base text-[#696158]">
               Manage dining area seating and status.
             </p>
           </div>
           <button
             type="button"
             onClick={tableState.openCreateForm}
-            className="flex h-10 items-center justify-center gap-2 self-start rounded-lg border border-[#d9cfc3] bg-white px-5 text-sm font-bold text-[#302c27] shadow-sm transition hover:border-[#c7b7a2] hover:bg-[#fffdfa] sm:self-auto"
+            className="flex h-12 items-center justify-center gap-2.5 self-start rounded-xl border border-[#d9cfc3] bg-white px-6 text-base font-bold text-[#302c27] shadow-sm transition hover:border-[#c7b7a2] hover:bg-[#fffdfa] sm:self-auto"
           >
-            <Icon name="plus" className="size-4" />
+            <Icon name="plus" className="size-5" />
             Add Table
           </button>
         </div>
