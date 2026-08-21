@@ -8,8 +8,11 @@ type MenuItemFormDialogProps = {
   categories: Category[];
   editing: boolean;
   form: MenuItemFormState;
+  imageFile: File | null;
+  imagePreview: string;
   onChange: (form: MenuItemFormState) => void;
   onClose: () => void;
+  onImageChange: (file: File | null) => void;
   onSubmit: () => void;
   open: boolean;
   saving: boolean;
@@ -20,8 +23,11 @@ export function MenuItemFormDialog({
   categories,
   editing,
   form,
+  imageFile,
+  imagePreview,
   onChange,
   onClose,
+  onImageChange,
   onSubmit,
   open,
   saving,
@@ -132,19 +138,51 @@ export function MenuItemFormDialog({
                 />
               </span>
             </label>
-            <label className="block text-sm font-bold text-stone-700">
-              Image URL <span className="font-normal text-stone-400">(optional)</span>
-              <input
-                type="url"
-                value={form.imageUrl}
-                onChange={(event) =>
-                  onChange({ ...form, imageUrl: event.target.value })
-                }
-                maxLength={2048}
-                placeholder="https://example.com/item.jpg"
-                className="mt-2 h-12 w-full rounded-xl border border-stone-300 px-4 outline-none transition placeholder:text-stone-400 focus:border-amber-600 focus:ring-3 focus:ring-amber-100"
-              />
-            </label>
+            <div>
+              <p className="text-sm font-bold text-stone-700">
+                Item image{" "}
+                <span className="font-normal text-stone-400">(optional)</span>
+              </p>
+              <div className="mt-2 flex items-center gap-3 rounded-xl border border-stone-300 p-3">
+                <span
+                  className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-[#f7ead5] bg-cover bg-center text-amber-800"
+                  style={
+                    imagePreview
+                      ? { backgroundImage: `url(${JSON.stringify(imagePreview)})` }
+                      : undefined
+                  }
+                >
+                  {!imagePreview ? (
+                    <Icon name="utensils" className="size-6" />
+                  ) : null}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <label className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-stone-300 px-3 text-xs font-bold text-stone-700 hover:bg-stone-50">
+                    Choose Image
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        onImageChange(event.target.files?.[0] ?? null)
+                      }
+                      className="sr-only"
+                    />
+                  </label>
+                  <p className="mt-1.5 truncate text-xs text-stone-500">
+                    {imageFile?.name ?? "JPEG, PNG or WebP · max 5 MB"}
+                  </p>
+                  {imagePreview ? (
+                    <button
+                      type="button"
+                      onClick={() => onImageChange(null)}
+                      className="mt-1 text-xs font-bold text-red-700"
+                    >
+                      Remove image
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
           </div>
 
           <label className="block text-sm font-bold text-stone-700">

@@ -31,17 +31,24 @@ export const apiRequest = async <T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> => {
+  const requestBody: BodyInit | undefined =
+    options.body instanceof FormData
+      ? options.body
+      : options.body === undefined
+        ? undefined
+        : JSON.stringify(options.body);
+  const isFormData = requestBody instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers: {
-      ...(options.body !== undefined
+      ...(options.body !== undefined && !isFormData
         ? { "content-type": "application/json" }
         : {}),
       ...(options.token
         ? { authorization: `Bearer ${options.token}` }
         : {}),
     },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body: requestBody,
     cache: "no-store",
   });
 
@@ -66,4 +73,3 @@ export const apiRequest = async <T>(
 
 export const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Something went wrong";
-

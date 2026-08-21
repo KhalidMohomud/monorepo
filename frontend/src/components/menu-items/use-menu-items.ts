@@ -24,6 +24,8 @@ export function useMenuItems() {
   const [deleteCandidate, setDeleteCandidate] = useState<MenuItem | null>(null);
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -81,6 +83,8 @@ export function useMenuItems() {
 
   const resetForm = () => {
     setEditingId(null);
+    setImageFile(null);
+    setImagePreview("");
     setForm({
       ...EMPTY_MENU_ITEM_FORM,
       categoryId: categories[0]?.id ?? "",
@@ -111,6 +115,8 @@ export function useMenuItems() {
 
   const openEditForm = (item: MenuItem) => {
     setEditingId(item.id);
+    setImageFile(null);
+    setImagePreview(item.imageUrl ?? "");
     setForm({
       categoryId: item.categoryId,
       name: item.name,
@@ -122,6 +128,34 @@ export function useMenuItems() {
     setFormOpen(true);
   };
 
+  const selectImage = (file: File | null) => {
+    if (!file) {
+      setImageFile(null);
+      setImagePreview("");
+      setForm((current) => ({ ...current, imageUrl: "" }));
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Choose a JPEG, PNG, or WebP image.", "Unsupported image");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be no larger than 5 MB.", "Image too large");
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setImagePreview(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const saveMenuItem = async () => {
     if (!token || !isAdmin) {
       return;
@@ -130,12 +164,15 @@ export function useMenuItems() {
     setSaving(true);
 
     try {
+      const uploadedImage = imageFile
+        ? await menuItemApi.uploadImage(token, imageFile)
+        : null;
       const input = {
         categoryId: form.categoryId,
         name: form.name,
         description: form.description || null,
         price: form.price,
-        imageUrl: form.imageUrl || null,
+        imageUrl: (uploadedImage?.data.imageUrl ?? form.imageUrl) || null,
         isAvailable: form.isAvailable,
       };
 
@@ -220,6 +257,8 @@ export function useMenuItems() {
     filteredItems,
     form,
     formOpen,
+    imageFile,
+    imagePreview,
     isAdmin,
     loading,
     menuItems,
@@ -229,6 +268,7 @@ export function useMenuItems() {
     requestDelete,
     saveMenuItem,
     saving,
+    selectImage,
     setForm,
     setQuery,
     toggleAvailability,

@@ -191,6 +191,45 @@ test("Day 2 domain APIs", async (t) => {
     assert.equal(response.status, 403);
   });
 
+  await t.test("protects and validates menu image uploads", async () => {
+    const staffForm = new FormData();
+    const staffResponse = await fetch(`${baseUrl}/menu-items/images`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${staffToken}` },
+      body: staffForm,
+    });
+
+    const emptyAdminForm = new FormData();
+    const emptyAdminResponse = await fetch(`${baseUrl}/menu-items/images`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${adminToken}` },
+      body: emptyAdminForm,
+    });
+    const emptyAdminBody = (await emptyAdminResponse.json()) as ApiResponse<{
+      imageUrl: string;
+    }>;
+
+    const invalidImageForm = new FormData();
+    invalidImageForm.append(
+      "image",
+      new Blob(["not an image"], { type: "text/plain" }),
+      "menu.txt",
+    );
+    const invalidImageResponse = await fetch(
+      `${baseUrl}/menu-items/images`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${adminToken}` },
+        body: invalidImageForm,
+      },
+    );
+
+    assert.equal(staffResponse.status, 403);
+    assert.equal(emptyAdminResponse.status, 400);
+    assert.equal(emptyAdminBody.error?.code, "IMAGE_REQUIRED");
+    assert.equal(invalidImageResponse.status, 415);
+  });
+
   await t.test("creates available and unavailable menu items", async () => {
     const available = await request<{ menuItem: MenuItem }>("/menu-items", {
       method: "POST",
@@ -353,4 +392,3 @@ test("Day 2 domain APIs", async (t) => {
     assert.equal(tableResponse.status, 204);
   });
 });
-

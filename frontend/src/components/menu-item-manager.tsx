@@ -64,8 +64,11 @@ export function MenuItemManager() {
             categories={menuState.categories}
             editing={menuState.editingId !== null}
             form={menuState.form}
+            imageFile={menuState.imageFile}
+            imagePreview={menuState.imagePreview}
             onChange={menuState.setForm}
             onClose={menuState.closeForm}
+            onImageChange={menuState.selectImage}
             onSubmit={() => void menuState.saveMenuItem()}
             open={menuState.formOpen}
             saving={menuState.saving}

@@ -72,8 +72,19 @@ export function MenuPicker({
               key={item.id}
               className="flex items-center gap-3 rounded-xl border border-[#dfd3c4] bg-[#fffaf5] p-3"
             >
-              <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-[#f1e3d0] text-[#8a5d1d]">
-                <Icon name="utensils" className="size-6" />
+              <span
+                className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-[#f1e3d0] bg-cover bg-center text-[#8a5d1d]"
+                style={
+                  item.imageUrl
+                    ? {
+                        backgroundImage: `url(${JSON.stringify(item.imageUrl)})`,
+                      }
+                    : undefined
+                }
+              >
+                {!item.imageUrl ? (
+                  <Icon name="utensils" className="size-6" />
+                ) : null}
               </span>
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-bold text-stone-900">{item.name}</h3>

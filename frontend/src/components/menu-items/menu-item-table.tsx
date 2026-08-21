@@ -143,8 +143,19 @@ export function MenuItemTable({
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(145deg,#fff3dc,#f8dfb1)] font-bold text-amber-800">
-                        {item.name.charAt(0).toUpperCase()}
+                      <span
+                        className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(145deg,#fff3dc,#f8dfb1)] bg-cover bg-center font-bold text-amber-800"
+                        style={
+                          item.imageUrl
+                            ? {
+                                backgroundImage: `url(${JSON.stringify(item.imageUrl)})`,
+                              }
+                            : undefined
+                        }
+                      >
+                        {!item.imageUrl
+                          ? item.name.charAt(0).toUpperCase()
+                          : null}
                       </span>
                       <div className="min-w-0">
                         <p className="font-bold text-stone-900">{item.name}</p>

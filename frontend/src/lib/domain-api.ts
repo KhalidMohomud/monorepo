@@ -90,6 +90,15 @@ export const menuItemApi = {
       method: "DELETE",
       token,
     }),
+  uploadImage: (token: string, image: File) => {
+    const body = new FormData();
+    body.append("image", image);
+
+    return apiRequest<{ data: { imageUrl: string } }>(
+      "/V1/menu-items/images",
+      { method: "POST", token, body },
+    );
+  },
 };
 
 export const restaurantTableApi = {
