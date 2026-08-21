@@ -4,10 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { getErrorMessage } from "@/lib/api";
+import type { Role } from "@/lib/types";
+
+const landingPageForRole = (role: Role) =>
+  role === "ADMIN" ? "/" : "/orders/new";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, status } = useAuth();
+  const { login, status, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,10 +19,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/menu-items");
+    if (status === "authenticated" && user) {
+      router.replace(landingPageForRole(user.role));
     }
-  }, [router, status]);
+  }, [router, status, user]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -26,8 +30,8 @@ export default function LoginPage() {
     setSubmitting(true);
 
     try {
-      await login(email, password);
-      router.replace("/menu-items");
+      const authenticatedUser = await login(email, password);
+      router.replace(landingPageForRole(authenticatedUser.role));
     } catch (loginError) {
       setError(getErrorMessage(loginError));
     } finally {

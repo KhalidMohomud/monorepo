@@ -16,7 +16,7 @@ import type { AuthUser } from "@/lib/types";
 const TOKEN_STORAGE_KEY = "merhaba-access-token";
 
 type AuthContextValue = {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   status: "loading" | "authenticated" | "unauthenticated";
@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(response.data.accessToken);
     setUser(response.data.user);
     setStatus("authenticated");
+    return response.data.user;
   }, []);
 
   const refreshUser = useCallback(async () => {

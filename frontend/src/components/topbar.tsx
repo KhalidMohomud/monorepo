@@ -1,24 +1,13 @@
 import Link from "next/link";
 
-import type { AuthUser } from "@/lib/types";
 import { Icon } from "./icon";
 
 type TopbarProps = {
-  onLogout: () => void;
   onMenuOpen: () => void;
-  user: AuthUser;
 };
 
-const getInitials = (name: string) =>
-  name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase() || "M";
-
-// Topbar contains session actions; page-specific actions stay inside each page.
-export function Topbar({ onLogout, onMenuOpen, user }: TopbarProps) {
+// Topbar keeps mobile navigation available while page actions stay in context.
+export function Topbar({ onMenuOpen }: TopbarProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center border-b border-[#e0d6ca] bg-[#fbf9f6]/95 px-4 backdrop-blur sm:px-6 lg:px-7">
       <button
@@ -36,8 +25,6 @@ export function Topbar({ onLogout, onMenuOpen, user }: TopbarProps) {
       >
         Merhaba Order Desk
       </Link>
-
-
     </header>
   );
 }

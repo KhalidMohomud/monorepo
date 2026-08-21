@@ -50,15 +50,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar
         mobileOpen={mobileNavigationOpen}
         onClose={() => setMobileNavigationOpen(false)}
+        onLogout={handleLogout}
         pathname={pathname}
         role={user.role}
       />
       <div className="min-h-screen lg:pl-[248px]">
-        <Topbar
-          onLogout={handleLogout}
-          onMenuOpen={() => setMobileNavigationOpen(true)}
-          user={user}
-        />
+        <Topbar onMenuOpen={() => setMobileNavigationOpen(true)} />
         {children}
       </div>
     </div>

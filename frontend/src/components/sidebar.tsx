@@ -2,23 +2,28 @@ import Link from "next/link";
 
 import type { Role } from "@/lib/types";
 import { Icon } from "./icon";
-import {
-  primaryNavigation,
-  secondaryNavigation,
-  type NavigationItem,
-} from "./navigation";
+import { primaryNavigation, type NavigationItem } from "./navigation";
 
 type SidebarProps = {
   mobileOpen: boolean;
   onClose: () => void;
+  onLogout: () => void;
   pathname: string;
   role: Role;
 };
 
-type SidebarContentProps = Pick<SidebarProps, "onClose" | "pathname" | "role">;
+type SidebarContentProps = Pick<
+  SidebarProps,
+  "onClose" | "onLogout" | "pathname" | "role"
+>;
 
 // Shared content keeps desktop and mobile navigation behavior identical.
-function SidebarContent({ onClose, pathname, role }: SidebarContentProps) {
+function SidebarContent({
+  onClose,
+  onLogout,
+  pathname,
+  role,
+}: SidebarContentProps) {
   const renderNavigation = (items: NavigationItem[]) =>
     items
       .filter((item) => !item.adminOnly || role === "ADMIN")
@@ -89,8 +94,18 @@ function SidebarContent({ onClose, pathname, role }: SidebarContentProps) {
 
       <nav className="flex flex-1 flex-col px-5" aria-label="Main navigation">
         <div className="space-y-2">{renderNavigation(primaryNavigation)}</div>
-        <div className="mt-auto space-y-2 border-t border-[#e3d8ca] pb-6 pt-6">
-          {renderNavigation(secondaryNavigation)}
+        <div className="mt-auto border-t border-[#e3d8ca] pb-6 pt-6">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onLogout();
+            }}
+            className="flex min-h-11 w-full items-center gap-3.5 rounded-xl px-4 text-[15px] font-bold text-[#514b43] transition hover:bg-red-50 hover:text-red-700"
+          >
+            <Icon name="logout" className="size-[21px] shrink-0" />
+            Logout
+          </button>
         </div>
       </nav>
     </>
@@ -98,8 +113,14 @@ function SidebarContent({ onClose, pathname, role }: SidebarContentProps) {
 }
 
 // Sidebar renders a fixed desktop rail and a matching mobile drawer.
-export function Sidebar({ mobileOpen, onClose, pathname, role }: SidebarProps) {
-  const contentProps = { onClose, pathname, role };
+export function Sidebar({
+  mobileOpen,
+  onClose,
+  onLogout,
+  pathname,
+  role,
+}: SidebarProps) {
+  const contentProps = { onClose, onLogout, pathname, role };
 
   return (
     <>

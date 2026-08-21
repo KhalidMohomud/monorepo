@@ -9,6 +9,7 @@ export type IconName =
   | "grid"
   | "help"
   | "history"
+  | "logout"
   | "menu"
   | "more"
   | "pencil"
@@ -61,6 +62,12 @@ export function Icon({
       <>
         <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
         <path d="M3 3v5h5M12 7v5l3 2" />
+      </>
+    ),
+    logout: (
+      <>
+        <path d="M10 17l5-5-5-5M15 12H3" />
+        <path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
       </>
     ),
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,

@@ -9,9 +9,9 @@ export type NavigationItem = {
 
 // Items without an href stay visible but disabled until their frontend page exists.
 export const primaryNavigation: NavigationItem[] = [
-  { href: "/", icon: "grid", label: "Dashboard" },
+  { href: "/", icon: "grid", label: "Dashboard", adminOnly: true, },
   { href: "/orders", icon: "receipt", label: "Orders" },
-  { href: "/tables", icon: "table", label: "Tables" },
+  { href: "/tables", icon: "table", label: "Tables", adminOnly: true, },
   { href: "/menu-items", icon: "utensils", label: "Menu" },
   {
     href: "/categories",
@@ -20,10 +20,5 @@ export const primaryNavigation: NavigationItem[] = [
     adminOnly: true,
   },
   { href: "/users", icon: "users", label: "Users", adminOnly: true },
-  { icon: "chart", label: "Reports", adminOnly: true },
-];
-
-export const secondaryNavigation: NavigationItem[] = [
-  { icon: "settings", label: "Settings" },
-  { icon: "help", label: "Support" },
+  // { icon: "chart", label: "Reports", adminOnly: true },
 ];
