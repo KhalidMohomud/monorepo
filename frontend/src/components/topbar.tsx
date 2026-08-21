@@ -37,43 +37,7 @@ export function Topbar({ onLogout, onMenuOpen, user }: TopbarProps) {
         Merhaba Order Desk
       </Link>
 
-      <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
-        <nav className="mr-2 hidden items-center gap-6 text-xs font-bold text-[#554d43] xl:flex">
-          <span>POS</span>
-          <span>Kitchen</span>
-          <span>Deliveries</span>
-        </nav>
-        <button
-          type="button"
-          disabled
-          aria-label="Notifications"
-          className="hidden size-9 cursor-not-allowed items-center justify-center rounded-lg text-[#554d43] opacity-70 sm:flex"
-        >
-          <Icon name="bell" className="size-5" />
-        </button>
-        <button
-          type="button"
-          disabled
-          aria-label="Activity history"
-          className="hidden size-9 cursor-not-allowed items-center justify-center rounded-lg text-[#554d43] opacity-70 sm:flex"
-        >
-          <Icon name="history" className="size-5" />
-        </button>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="rounded-lg bg-[#eda735] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#d99729] sm:px-5"
-        >
-          Check Out
-        </button>
-        <div
-          className="flex size-9 items-center justify-center rounded-full border-2 border-white bg-[#765a32] text-xs font-bold text-white shadow"
-          title={`${user.name} · ${user.role}`}
-          aria-label={`${user.name}, ${user.role}`}
-        >
-          {getInitials(user.name)}
-        </div>
-      </div>
+
     </header>
   );
 }
