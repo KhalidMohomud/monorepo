@@ -94,3 +94,27 @@ export type Order = {
   createdBy: AuthUser;
   items: OrderItem[];
 };
+
+export type DashboardRecentOrder = {
+  id: string;
+  status: OrderStatus;
+  total: string;
+  createdAt: string;
+  itemCount: number;
+  table: { id: string; tableNumber: number };
+};
+
+export type DashboardOverview = {
+  summary: {
+    occupiedTables: number;
+    totalTables: number;
+    activeOrders: number;
+    todayOrders: number;
+    todayRevenue: string;
+  };
+  activeOrdersByStatus: Record<
+    "PENDING" | "PREPARING" | "READY" | "SERVED",
+    number
+  >;
+  recentOrders: DashboardRecentOrder[];
+};

@@ -1,6 +1,7 @@
 import { apiRequest } from "./api";
 import type {
   Category,
+  DashboardOverview,
   MenuItem,
   Order,
   OrderStatus,
@@ -195,4 +196,12 @@ export const orderApi = {
       token,
       body: { status },
     }),
+};
+
+export const dashboardApi = {
+  overview: (token: string) =>
+    apiRequest<{ data: { dashboard: DashboardOverview } }>(
+      "/V1/dashboard/overview",
+      { token },
+    ),
 };

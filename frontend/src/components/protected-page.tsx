@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import { useAuth } from "./auth-provider";
+import { LoadingCircle } from "./loading-circle";
 
 export function ProtectedPage({
   adminOnly = false,
@@ -23,8 +24,8 @@ export function ProtectedPage({
 
   if (status === "loading" || status === "unauthenticated") {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-16 text-sm text-zinc-500">
-        Checking your session…
+      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-6">
+        <LoadingCircle label="Checking your session…" />
       </main>
     );
   }
@@ -42,4 +43,3 @@ export function ProtectedPage({
 
   return children;
 }
-
