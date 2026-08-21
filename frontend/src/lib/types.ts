@@ -7,6 +7,11 @@ export type AuthUser = {
   role: Role;
 };
 
+export type UserAccount = AuthUser & {
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Category = {
   id: string;
   name: string;
@@ -45,5 +50,10 @@ export type RestaurantTable = {
   status: TableStatus;
   createdAt: string;
   updatedAt: string;
+  activeOrder: {
+    id: string;
+    status: "PENDING" | "PREPARING" | "READY" | "SERVED";
+    total: string;
+    createdAt: string;
+  } | null;
 };
-

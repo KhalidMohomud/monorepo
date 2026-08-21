@@ -3,7 +3,9 @@ import type {
   Category,
   MenuItem,
   RestaurantTable,
+  Role,
   TableStatus,
+  UserAccount,
 } from "./types";
 
 type CategoryInput = {
@@ -25,6 +27,15 @@ type RestaurantTableInput = {
   capacity: number;
   status?: TableStatus;
 };
+
+type CreateUserInput = {
+  email: string;
+  name: string;
+  password: string;
+  role: Role;
+};
+
+type UpdateUserInput = Partial<CreateUserInput>;
 
 export const categoryApi = {
   list: (token: string) =>
@@ -102,6 +113,28 @@ export const restaurantTableApi = {
     ),
   remove: (token: string, id: string) =>
     apiRequest<void>(`/V1/tables/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+};
+
+export const userApi = {
+  list: (token: string) =>
+    apiRequest<{ data: { users: UserAccount[] } }>("/V1/users", { token }),
+  create: (token: string, input: CreateUserInput) =>
+    apiRequest<{ data: { user: UserAccount } }>("/V1/users", {
+      method: "POST",
+      token,
+      body: input,
+    }),
+  update: (token: string, id: string, input: UpdateUserInput) =>
+    apiRequest<{ data: { user: UserAccount } }>(`/V1/users/${id}`, {
+      method: "PATCH",
+      token,
+      body: input,
+    }),
+  remove: (token: string, id: string) =>
+    apiRequest<void>(`/V1/users/${id}`, {
       method: "DELETE",
       token,
     }),

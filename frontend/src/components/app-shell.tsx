@@ -2,20 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { useAuth } from "./auth-provider";
+import { Sidebar } from "./sidebar";
+import { Topbar } from "./topbar";
 
-const links = [
-  { href: "/menu-items", label: "Menu", adminOnly: false },
-  { href: "/categories", label: "Categories", adminOnly: true },
-  { href: "/tables", label: "Tables", adminOnly: false },
-];
-
+// AppShell only coordinates authentication state and the responsive layout.
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout, status, user } = useAuth();
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -26,55 +24,43 @@ export function AppShell({ children }: { children: ReactNode }) {
     return children;
   }
 
-  return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="font-semibold tracking-tight text-zinc-950">
-            Merhaba Order Desk
-          </Link>
-
-          {status === "authenticated" ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <nav className="flex items-center gap-1" aria-label="Main navigation">
-                {links
-                  .filter((link) => !link.adminOnly || user?.role === "ADMIN")
-                  .map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                        pathname === link.href
-                          ? "bg-amber-100 text-amber-900"
-                          : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-              </nav>
-              <span className="hidden text-sm text-zinc-500 sm:inline">
-                {user?.name} · {user?.role}
-              </span>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : pathname !== "/login" ? (
+  if (status !== "authenticated" || !user) {
+    return (
+      <div className="min-h-screen bg-[#faf8f5]">
+        <header className="border-b border-[#e6ded3] bg-white">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+            <Link href="/" className="text-lg font-bold text-[#694817]">
+              Merhaba Order Desk
+            </Link>
             <Link
               href="/login"
-              className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800"
+              className="rounded-lg bg-[#eba42f] px-4 py-2 text-sm font-bold text-white"
             >
               Sign in
             </Link>
-          ) : null}
-        </div>
-      </header>
-      {children}
+          </div>
+        </header>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#fbf8f4] text-[#25221e]">
+      <Sidebar
+        mobileOpen={mobileNavigationOpen}
+        onClose={() => setMobileNavigationOpen(false)}
+        pathname={pathname}
+        role={user.role}
+      />
+      <div className="min-h-screen lg:pl-[248px]">
+        <Topbar
+          onLogout={handleLogout}
+          onMenuOpen={() => setMobileNavigationOpen(true)}
+          user={user}
+        />
+        {children}
+      </div>
     </div>
   );
 }

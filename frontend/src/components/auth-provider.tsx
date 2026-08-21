@@ -18,6 +18,7 @@ const TOKEN_STORAGE_KEY = "merhaba-access-token";
 type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   status: "loading" | "authenticated" | "unauthenticated";
   token: string | null;
   user: AuthUser | null;
@@ -71,9 +72,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const response = await apiRequest<{ data: { user: AuthUser } }>(
+      "/auth/me",
+      { token },
+    );
+    setUser(response.data.user);
+  }, [token]);
+
   const value = useMemo(
-    () => ({ login, logout, status, token, user }),
-    [login, logout, status, token, user],
+    () => ({ login, logout, refreshUser, status, token, user }),
+    [login, logout, refreshUser, status, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
