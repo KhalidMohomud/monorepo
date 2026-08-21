@@ -13,10 +13,17 @@ type OrderTableProps = {
   loading: boolean;
   onOpen: (order: Order) => void;
   orders: Order[];
+  query: string;
   view: OrderView;
 };
 
-export function OrderTable({ loading, onOpen, orders, view }: OrderTableProps) {
+export function OrderTable({
+  loading,
+  onOpen,
+  orders,
+  query,
+  view,
+}: OrderTableProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-[#ded4c7] bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -48,12 +55,18 @@ export function OrderTable({ loading, onOpen, orders, view }: OrderTableProps) {
                     <Icon name={view === "ACTIVE" ? "receipt" : "history"} className="size-6" />
                   </span>
                   <p className="mt-3 font-bold text-stone-700">
-                    {view === "ACTIVE" ? "No active orders" : "No order history"}
+                    {query
+                      ? "No matching orders"
+                      : view === "ACTIVE"
+                        ? "No active orders"
+                        : "No order history"}
                   </p>
                   <p className="mt-1 text-sm text-stone-500">
-                    {view === "ACTIVE"
-                      ? "New orders will appear here."
-                      : "Paid and cancelled orders will appear here."}
+                    {query
+                      ? "Try another order reference, table number, or status."
+                      : view === "ACTIVE"
+                        ? "New orders will appear here."
+                        : "Paid and cancelled orders will appear here."}
                   </p>
                 </td>
               </tr>
