@@ -30,9 +30,7 @@ function SidebarContent({
       .filter((item) => !item.roles || item.roles.includes(role))
       .map((item) => {
         const active = item.href
-          ? item.href === "/"
-            ? pathname === "/"
-            : pathname === item.href || pathname.startsWith(`${item.href}/`)
+          ? pathname === item.href || pathname.startsWith(`${item.href}/`)
           : false;
         const className = `flex min-h-11 w-full items-center gap-3.5 rounded-xl px-4 text-[15px] font-bold transition ${
           active

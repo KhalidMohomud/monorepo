@@ -11,7 +11,7 @@ const waiterStatusTargets: readonly OrderStatus[] = [
 const cashierStatusTargets: readonly OrderStatus[] = ["PAID", "CANCELLED"];
 
 export const landingPageForRole = (role: Role): string => {
-  if (role === "ADMIN") return "/";
+  if (role === "ADMIN") return "/dashboard";
   if (role === "CASHIER") return "/orders";
   return "/orders/new";
 };

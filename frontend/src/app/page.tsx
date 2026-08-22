@@ -1,11 +1,5 @@
-import { DashboardManager } from "@/components/dashboard-manager";
-import { ProtectedPage } from "@/components/protected-page";
-import { ADMIN_ONLY_ROLES } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <ProtectedPage allowedRoles={ADMIN_ONLY_ROLES}>
-      <DashboardManager />
-    </ProtectedPage>
-  );
+  redirect("/login");
 }

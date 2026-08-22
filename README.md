@@ -554,7 +554,8 @@ cannot be deleted.
 | Route | Screen | Access |
 | --- | --- | --- |
 | `/login` | Sign in | Public |
-| `/` | Restaurant dashboard | Admin |
+| `/` | Redirect to sign in | Public |
+| `/dashboard` | Restaurant dashboard | Admin |
 | `/orders` | Active orders and role-appropriate actions; history for Admin | Admin, Waiter, and Cashier |
 | `/orders/new` | Create an order | Admin and Waiter |
 | `/tables` | Table management or read-only floor view | Admin and Waiter manage; Cashier reads |

@@ -155,20 +155,7 @@ export default function LoginPage() {
           </label>
 
           <div className="flex items-center gap-2.5 text-sm text-stone-600">
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="size-4 text-[#94661e]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
-            Your access remains active for this browser session.
+
           </div>
 
           {error ? (
