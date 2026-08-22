@@ -15,11 +15,35 @@ import { authorize } from "../middleware/role.middleware.js";
 
 export const orderRouter = Router();
 
-orderRouter.use(authenticate, authorize(Role.ADMIN, Role.STAFF));
-orderRouter.get("/", list);
-orderRouter.get("/:id", getById);
-orderRouter.post("/", create);
-orderRouter.post("/:id/items", addItem);
-orderRouter.patch("/:id/items/:itemId", updateItem);
-orderRouter.delete("/:id/items/:itemId", removeItem);
-orderRouter.patch("/:id/status", updateStatus);
+orderRouter.use(authenticate);
+orderRouter.get(
+  "/",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  list,
+);
+orderRouter.get(
+  "/:id",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  getById,
+);
+orderRouter.post("/", authorize(Role.ADMIN, Role.WAITER), create);
+orderRouter.post(
+  "/:id/items",
+  authorize(Role.ADMIN, Role.WAITER),
+  addItem,
+);
+orderRouter.patch(
+  "/:id/items/:itemId",
+  authorize(Role.ADMIN, Role.WAITER),
+  updateItem,
+);
+orderRouter.delete(
+  "/:id/items/:itemId",
+  authorize(Role.ADMIN, Role.WAITER),
+  removeItem,
+);
+orderRouter.patch(
+  "/:id/status",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  updateStatus,
+);

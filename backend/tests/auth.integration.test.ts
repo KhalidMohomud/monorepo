@@ -15,17 +15,19 @@ process.env.FRONTEND_URL = "http://localhost:3000";
 
 const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 
-const migrationSql = await readFile(
-  new URL(
-    "../prisma/migrations/20260819181500_initial_schema/migration.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const migrationFiles = [
+  "../prisma/migrations/20260819181500_initial_schema/migration.sql",
+  "../prisma/migrations/20260822110000_split_staff_roles/migration.sql",
+];
 const setupClient = new Client({ connectionString: testDatabaseUrl });
 
 await setupClient.connect();
-await setupClient.query(migrationSql);
+for (const migrationFile of migrationFiles) {
+  const migrationSql = await readFile(new URL(migrationFile, import.meta.url), {
+    encoding: "utf8",
+  });
+  await setupClient.query(migrationSql);
+}
 await setupClient.end();
 
 const { app } = await import("../src/app.js");
@@ -76,7 +78,7 @@ test("authentication API", async (t) => {
   rbacApp.get(
     "/operations",
     authenticate,
-    authorize(Role.ADMIN, Role.STAFF),
+    authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
     (_req, res) => {
       res.status(204).send();
     },
@@ -133,8 +135,12 @@ test("authentication API", async (t) => {
 
   const email = "khalid@example.com";
   const password = "StrongPassword123";
-  let staffUserId = "";
-  let staffAccessToken = "";
+  const cashierAccessToken = signAccessToken({
+    userId: "39d01dcd-f10e-47ee-bd45-8a1958bc34f7",
+    role: Role.CASHIER,
+  });
+  let waiterUserId = "";
+  let waiterAccessToken = "";
 
   await t.test("applies Helmet and fixes CORS to FRONTEND_URL", async () => {
     const allowedResponse = await fetch(`${apiBaseUrl}/health`, {
@@ -202,7 +208,7 @@ test("authentication API", async (t) => {
     assert.equal(result.body.error?.code, "PAYLOAD_TOO_LARGE");
   });
 
-  await t.test("registers a staff user", async () => {
+  await t.test("registers a waiter user", async () => {
     const response = await request("/register", {
       name: "Khalid",
       email,
@@ -211,12 +217,12 @@ test("authentication API", async (t) => {
 
     assert.equal(response.status, 201);
     assert.equal(response.body.data?.user?.email, email);
-    assert.equal(response.body.data?.user?.role, "STAFF");
+    assert.equal(response.body.data?.user?.role, "WAITER");
     assert.equal("passwordHash" in (response.body.data?.user ?? {}), false);
     const registeredUserId = response.body.data?.user?.id;
     assert.equal(typeof registeredUserId, "string");
     assert(typeof registeredUserId === "string");
-    staffUserId = registeredUserId;
+    waiterUserId = registeredUserId;
   });
 
   await t.test("rejects duplicate registration", async () => {
@@ -274,7 +280,7 @@ test("authentication API", async (t) => {
     assert.equal(typeof response.body.data?.accessToken, "string");
     assert.equal(response.body.data?.user?.email, email);
     assert.equal("passwordHash" in (response.body.data?.user ?? {}), false);
-    staffAccessToken = response.body.data?.accessToken ?? "";
+    waiterAccessToken = response.body.data?.accessToken ?? "";
   });
 
   let invalidCredentialsResponse: JsonResponse["error"];
@@ -308,7 +314,7 @@ test("authentication API", async (t) => {
   });
 
   await t.test("rejects a malformed authorization header", async () => {
-    const response = await requestMe(`Token ${staffAccessToken}`);
+    const response = await requestMe(`Token ${waiterAccessToken}`);
 
     assert.equal(response.status, 401);
     assert.equal(response.body.error?.code, "AUTHENTICATION_REQUIRED");
@@ -322,12 +328,12 @@ test("authentication API", async (t) => {
   });
 
   await t.test("rejects an expired token", async () => {
-    const expiredToken = jwt.sign({ role: Role.STAFF }, TEST_JWT_SECRET, {
+    const expiredToken = jwt.sign({ role: Role.WAITER }, TEST_JWT_SECRET, {
       algorithm: "HS256",
       audience: "merhaba-order-desk-api",
       expiresIn: -1,
       issuer: "merhaba-order-desk",
-      subject: staffUserId,
+      subject: waiterUserId,
     });
     const response = await requestMe(`Bearer ${expiredToken}`);
 
@@ -336,19 +342,19 @@ test("authentication API", async (t) => {
   });
 
   await t.test("returns the current user for a valid token", async () => {
-    const response = await requestMe(`Bearer ${staffAccessToken}`);
+    const response = await requestMe(`Bearer ${waiterAccessToken}`);
 
     assert.equal(response.status, 200);
     assert.deepEqual(
       Object.keys(response.body.data?.user ?? {}).sort(),
       ["email", "id", "name", "role"],
     );
-    assert.equal(response.body.data?.user?.id, staffUserId);
+    assert.equal(response.body.data?.user?.id, waiterUserId);
     assert.equal(response.body.data?.user?.email, email);
   });
 
-  await t.test("forbids STAFF from an ADMIN-only route", async () => {
-    const response = await requestRbacRoute("/admin", staffAccessToken);
+  await t.test("forbids WAITER from an ADMIN-only route", async () => {
+    const response = await requestRbacRoute("/admin", waiterAccessToken);
     const body = (await response.json()) as JsonResponse;
 
     assert.equal(response.status, 403);
@@ -365,8 +371,14 @@ test("authentication API", async (t) => {
     assert.equal(response.status, 204);
   });
 
-  await t.test("allows STAFF through a shared role route", async () => {
-    const response = await requestRbacRoute("/operations", staffAccessToken);
+  await t.test("allows WAITER through a shared role route", async () => {
+    const response = await requestRbacRoute("/operations", waiterAccessToken);
+
+    assert.equal(response.status, 204);
+  });
+
+  await t.test("allows CASHIER through a shared role route", async () => {
+    const response = await requestRbacRoute("/operations", cashierAccessToken);
 
     assert.equal(response.status, 204);
   });

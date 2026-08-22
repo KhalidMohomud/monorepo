@@ -52,7 +52,7 @@ export const listMenuItems = async (query: MenuItemQuery, role: Role) => {
   const menuItems = await prisma.menuItem.findMany({
     where: {
       categoryId: query.categoryId,
-      isAvailable: role === Role.STAFF ? true : query.isAvailable,
+      isAvailable: role === Role.ADMIN ? query.isAvailable : true,
     },
     include: menuItemInclude,
     orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
@@ -65,7 +65,7 @@ export const getMenuItemById = async (id: string, role: Role) => {
   const menuItem = await prisma.menuItem.findFirst({
     where: {
       id,
-      isAvailable: role === Role.STAFF ? true : undefined,
+      isAvailable: role === Role.ADMIN ? undefined : true,
     },
     include: menuItemInclude,
   });

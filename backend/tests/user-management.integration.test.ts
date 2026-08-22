@@ -15,6 +15,7 @@ const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 const migrationFiles = [
   "../prisma/migrations/20260819181500_initial_schema/migration.sql",
   "../prisma/migrations/20260820140000_order_invariants/migration.sql",
+  "../prisma/migrations/20260822110000_split_staff_roles/migration.sql",
 ];
 const setupClient = new Client({ connectionString: testDatabaseUrl });
 
@@ -39,7 +40,7 @@ type UserResponse = {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "STAFF";
+  role: "ADMIN" | "WAITER" | "CASHIER";
   createdAt: string;
   updatedAt: string;
 };
@@ -65,7 +66,8 @@ test("Admin user management API", async (t) => {
 
   const apiBaseUrl = `http://127.0.0.1:${address.port}/api/V1`;
   const adminId = "71908444-42ef-4dea-8d0f-e5691180e8f3";
-  const staffId = "99211405-6005-424a-ae26-15102b6e2c96";
+  const waiterId = "99211405-6005-424a-ae26-15102b6e2c96";
+  const cashierId = "39d01dcd-f10e-47ee-bd45-8a1958bc34f7";
   const initialPassword = "StrongPassword123";
   const passwordHash = await hashPassword(initialPassword);
 
@@ -79,17 +81,28 @@ test("Admin user management API", async (t) => {
         role: Role.ADMIN,
       },
       {
-        id: staffId,
-        name: "User Staff",
-        email: "user-staff@merhaba.test",
+        id: waiterId,
+        name: "User Waiter",
+        email: "user-waiter@merhaba.test",
         passwordHash,
-        role: Role.STAFF,
+        role: Role.WAITER,
+      },
+      {
+        id: cashierId,
+        name: "User Cashier",
+        email: "user-cashier@merhaba.test",
+        passwordHash,
+        role: Role.CASHIER,
       },
     ],
   });
 
   const adminToken = signAccessToken({ userId: adminId, role: Role.ADMIN });
-  const staffToken = signAccessToken({ userId: staffId, role: Role.STAFF });
+  const waiterToken = signAccessToken({ userId: waiterId, role: Role.WAITER });
+  const cashierToken = signAccessToken({
+    userId: cashierId,
+    role: Role.CASHIER,
+  });
 
   const request = async (
     path: string,
@@ -133,35 +146,52 @@ test("Admin user management API", async (t) => {
     assert.equal(response.body?.error?.code, "AUTHENTICATION_REQUIRED");
   });
 
-  await t.test("rejects Staff users", async () => {
-    const response = await request("", { token: staffToken });
+  await t.test("rejects Waiter and Cashier users", async () => {
+    const waiterResponse = await request("", { token: waiterToken });
+    const cashierResponse = await request("", { token: cashierToken });
 
-    assert.equal(response.status, 403);
-    assert.equal(response.body?.error?.code, "INSUFFICIENT_PERMISSIONS");
+    assert.equal(waiterResponse.status, 403);
+    assert.equal(
+      waiterResponse.body?.error?.code,
+      "INSUFFICIENT_PERMISSIONS",
+    );
+    assert.equal(cashierResponse.status, 403);
+    assert.equal(
+      cashierResponse.body?.error?.code,
+      "INSUFFICIENT_PERMISSIONS",
+    );
   });
 
   await t.test("lists safe users and supports role filtering", async () => {
     const allResponse = await request("", { token: adminToken });
-    const staffResponse = await request("?role=STAFF", {
+    const waiterResponse = await request("?role=WAITER", {
+      token: adminToken,
+    });
+    const cashierResponse = await request("?role=CASHIER", {
       token: adminToken,
     });
 
     assert.equal(allResponse.status, 200);
-    assert.equal(allResponse.body?.data?.users?.length, 2);
+    assert.equal(allResponse.body?.data?.users?.length, 3);
     assert.equal(
       JSON.stringify(allResponse.body).includes("passwordHash"),
       false,
     );
-    assert.equal(staffResponse.status, 200);
+    assert.equal(waiterResponse.status, 200);
     assert.deepEqual(
-      staffResponse.body?.data?.users?.map((user) => user.role),
-      [Role.STAFF],
+      waiterResponse.body?.data?.users?.map((user) => user.role),
+      [Role.WAITER],
+    );
+    assert.equal(cashierResponse.status, 200);
+    assert.deepEqual(
+      cashierResponse.body?.data?.users?.map((user) => user.role),
+      [Role.CASHIER],
     );
   });
 
   let managedUserId = "";
 
-  await t.test("creates a Staff user by default with a hashed password", async () => {
+  await t.test("creates a Waiter user by default with a hashed password", async () => {
     const response = await request("", {
       method: "POST",
       token: adminToken,
@@ -174,7 +204,7 @@ test("Admin user management API", async (t) => {
 
     assert.equal(response.status, 201);
     assert.equal(response.body?.data?.user?.email, "managed@merhaba.test");
-    assert.equal(response.body?.data?.user?.role, Role.STAFF);
+    assert.equal(response.body?.data?.user?.role, Role.WAITER);
     assert.equal(
       JSON.stringify(response.body).includes("passwordHash"),
       false,
@@ -192,6 +222,26 @@ test("Admin user management API", async (t) => {
     assert.equal(
       await comparePassword(initialPassword, storedUser.passwordHash),
       true,
+    );
+  });
+
+  await t.test("allows an Admin to create a Cashier", async () => {
+    const response = await request("", {
+      method: "POST",
+      token: adminToken,
+      body: {
+        name: "Checkout Cashier",
+        email: "cashier-managed@merhaba.test",
+        password: initialPassword,
+        role: Role.CASHIER,
+      },
+    });
+
+    assert.equal(response.status, 201);
+    assert.equal(response.body?.data?.user?.role, Role.CASHIER);
+    assert.equal(
+      JSON.stringify(response.body).includes("passwordHash"),
+      false,
     );
   });
 
@@ -304,7 +354,7 @@ test("Admin user management API", async (t) => {
     const response = await request(`/${adminId}`, {
       method: "PATCH",
       token: adminToken,
-      body: { role: Role.STAFF },
+      body: { role: Role.WAITER },
     });
 
     assert.equal(response.status, 409);
@@ -331,13 +381,13 @@ test("Admin user management API", async (t) => {
     await prisma.order.create({
       data: {
         tableId: restaurantTable.id,
-        createdById: staffId,
+        createdById: waiterId,
         subtotal: "0.00",
         total: "0.00",
       },
     });
 
-    const response = await request(`/${staffId}`, {
+    const response = await request(`/${waiterId}`, {
       method: "DELETE",
       token: adminToken,
     });

@@ -10,7 +10,8 @@ datasource db {
 
 enum Role {
   ADMIN
-  STAFF
+  WAITER
+  CASHIER
 }
 
 enum TableStatus {
@@ -34,7 +35,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
-  role         Role     @default(STAFF)
+  role         Role     @default(WAITER)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
   orders       Order[]  @relation("CreatedOrders")

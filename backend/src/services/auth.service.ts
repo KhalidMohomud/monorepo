@@ -40,7 +40,7 @@ export const registerUser = async (input: RegisterInput) => {
         name: input.name,
         email: input.email,
         passwordHash,
-        role: Role.STAFF,
+        role: Role.WAITER,
       },
     });
 

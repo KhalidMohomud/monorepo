@@ -11,17 +11,19 @@ process.env.JWT_SECRET = "test-only-secret-that-is-at-least-32-characters";
 process.env.FRONTEND_URL = "http://localhost:3000";
 
 const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
-const migrationSql = await readFile(
-  new URL(
-    "../prisma/migrations/20260819181500_initial_schema/migration.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const migrationFiles = [
+  "../prisma/migrations/20260819181500_initial_schema/migration.sql",
+  "../prisma/migrations/20260822110000_split_staff_roles/migration.sql",
+];
 const setupClient = new Client({ connectionString: testDatabaseUrl });
 
 await setupClient.connect();
-await setupClient.query(migrationSql);
+for (const migrationFile of migrationFiles) {
+  const migrationSql = await readFile(new URL(migrationFile, import.meta.url), {
+    encoding: "utf8",
+  });
+  await setupClient.query(migrationSql);
+}
 await setupClient.end();
 
 const { app } = await import("../src/app.js");

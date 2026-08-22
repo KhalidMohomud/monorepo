@@ -19,7 +19,7 @@ export const createUserSchema = z
     name: userNameSchema,
     email: emailSchema,
     password: passwordSchema,
-    role: z.enum(Role).default(Role.STAFF),
+    role: z.enum(Role).default(Role.WAITER),
   })
   .strict();
 

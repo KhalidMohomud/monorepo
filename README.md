@@ -24,7 +24,8 @@ the API CORS policy permits the deployed frontend origin explicitly.
 The core assessment workflows are implemented across the API and frontend,
 with remaining trade-offs recorded in [Known Limitations](#known-limitations):
 
-- secure email/password authentication with `ADMIN` and `STAFF` roles;
+- secure email/password authentication with `ADMIN`, `WAITER`, and `CASHIER`
+  roles;
 - category and menu-item management;
 - restaurant table management and status changes;
 - order creation, line-item changes, totals, status transitions, and history;
@@ -66,8 +67,6 @@ and advanced reservation workflows are not part of the implemented MVP.
 - Node.js test runner
 - PGlite's PostgreSQL-compatible socket server for isolated backend integration
   tests
-- A dedicated security integration suite covering injection, validation,
-  browser-origin controls, untrusted text responses, and test-database isolation
 
 ## Architecture
 
@@ -261,14 +260,16 @@ demo passwords without displaying them. The plaintext passwords are never
 stored in source code or written to the database.
 
 For non-interactive CI or demo automation, provide
-`SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD` through the process environment
-or a secret manager. Do not add them to a committed file or expose them in logs.
+`SEED_ADMIN_PASSWORD`, `SEED_WAITER_PASSWORD`, and `SEED_CASHIER_PASSWORD`
+through the process environment or a secret manager. Do not add them to a
+committed file or expose them in logs.
 
 The seed can be run repeatedly without creating duplicate records. It creates
 or updates:
 
 - one Admin account;
-- one Staff account;
+- one Waiter account;
+- one Cashier account;
 - four menu categories;
 - seven menu items; and
 - six restaurant tables.
@@ -276,7 +277,8 @@ or updates:
 | Account | Email | Role | Password |
 | --- | --- | --- | --- |
 | Admin | `admin@merhaba.test` | `ADMIN` | The Admin password selected during seeding |
-| Staff | `staff@merhaba.test` | `STAFF` | The Staff password selected during seeding |
+| Waiter | `waiter@merhaba.test` | `WAITER` | The Waiter password selected during seeding |
+| Cashier | `cashier@merhaba.test` | `CASHIER` | The Cashier password selected during seeding |
 
 ## Running Locally
 
@@ -386,18 +388,25 @@ Authorization: Bearer <access-token>
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/api/V1/auth/register` | Public | Register a `STAFF` account. |
+| `POST` | `/api/V1/auth/register` | Public | Register a `WAITER` account. |
 | `POST` | `/api/V1/auth/login` | Public | Authenticate and receive a JWT. |
 | `GET` | `/api/auth/me` | Authenticated | Load the current safe user profile. |
 
-Public registration always assigns `STAFF`; the request cannot choose an Admin
-role. Only an authenticated Admin can create or promote another Admin through
-the user-management API.
+Public registration always assigns `WAITER`; the request cannot choose a role.
+Only an authenticated Admin can create Admin, Waiter, or Cashier accounts
+through the user-management API.
+
+The role migration converts existing `STAFF` database records to `WAITER`
+without changing their IDs, passwords, or order history. Access tokens issued
+with the removed `STAFF` claim are rejected after deployment, so those users
+must sign in again.
 
 After login:
 
 - Admin users are sent to the dashboard.
-- Staff users are sent to the create-order screen.
+- Waiter users are sent to the create-order screen.
+- Cashier-specific frontend routing and controls are pending; the backend role
+  boundary is complete and enforced independently of the UI.
 
 Passwords are hashed with bcryptjs and are never returned by an API response.
 Invalid login attempts use the same generic response for unknown emails and
@@ -405,15 +414,19 @@ incorrect passwords.
 
 ### Role Permissions
 
-| Capability | Admin | Staff |
-| --- | :---: | :---: |
-| Dashboard overview | Yes | Yes |
-| Manage categories | Yes | No |
-| Create, update, and delete menu items | Yes | No |
-| View available menu items | Yes | Yes |
-| Manage restaurant tables and statuses | Yes | Yes |
-| Create and manage orders | Yes | Yes |
-| Manage user accounts and roles | Yes | No |
+| Capability | Admin | Waiter | Cashier |
+| --- | :---: | :---: | :---: |
+| Dashboard overview | Yes | Yes | Yes |
+| Manage categories | Yes | No | No |
+| Create, update, and delete menu items | Yes | No | No |
+| View available menu items | Yes | Yes | Yes |
+| View restaurant tables | Yes | Yes | Yes |
+| Manage restaurant tables and statuses | Yes | Yes | No |
+| View orders | Yes | Yes | Yes |
+| Create orders and edit order items | Yes | Yes | No |
+| Move orders to `PREPARING`, `READY`, or `SERVED` | Yes | Yes | No |
+| Mark orders `PAID` or `CANCELLED` | Yes | No | Yes |
+| Manage user accounts and roles | Yes | No | No |
 
 The backend is the final authorization boundary. Hiding a frontend control is a
 usability decision and is never treated as sufficient security.
@@ -436,8 +449,8 @@ DELETE /api/V1/categories/:id
 
 ### Menu Items
 
-Admin and Staff can read menu items. Staff responses contain only available
-items. Mutations and image upload are Admin only.
+All authenticated roles can read menu items. Waiter and Cashier responses
+contain only available items. Mutations and image upload are Admin only.
 
 ```text
 GET    /api/V1/menu-items
@@ -454,7 +467,8 @@ restaurant operations continue to work.
 
 ### Restaurant Tables
 
-Admin and Staff:
+Admin, Waiter, and Cashier can read tables. Only Admin and Waiter can create,
+update, change the status of, or delete tables:
 
 ```text
 GET    /api/V1/tables
@@ -470,7 +484,8 @@ Supported table statuses are `AVAILABLE`, `OCCUPIED`, `RESERVED`, and
 
 ### Orders
 
-Admin and Staff:
+Admin, Waiter, and Cashier can list and view orders. Only Admin and Waiter can
+create orders or change order items:
 
 ```text
 GET    /api/V1/orders
@@ -494,6 +509,11 @@ PENDING -> PREPARING -> READY -> SERVED -> PAID
     +-----------+----------+-> CANCELLED
 ```
 
+Admin can perform every valid transition. Waiter can apply the operational
+`PREPARING`, `READY`, and `SERVED` transitions but receives `403` for `PAID` or
+`CANCELLED`. Cashier can apply only `PAID` and `CANCELLED`; Cashier cannot create
+orders, edit order items, or apply operational preparation/service statuses.
+
 The server owns prices and totals. It reads current menu data when adding an
 item, stores the historical snapshots, calculates each line total, and
 recalculates the order inside database transactions. Creating an order marks
@@ -501,7 +521,7 @@ its table `OCCUPIED`; paying or cancelling releases the table to `AVAILABLE`.
 
 ### Dashboard
 
-Admin and Staff:
+Admin, Waiter, and Cashier:
 
 ```text
 GET /api/V1/dashboard/overview
@@ -532,10 +552,10 @@ cannot be deleted.
 | --- | --- | --- |
 | `/login` | Sign in | Public |
 | `/` | Restaurant dashboard | Authenticated |
-| `/orders` | Active orders, history, and order details | Admin and Staff |
-| `/orders/new` | Create an order | Admin and Staff |
-| `/tables` | Table management | Admin and Staff |
-| `/menu-items` | Menu management/browsing | Admin and Staff, with role-aware controls |
+| `/orders` | Active orders, history, and order details | Admin and Waiter; Cashier UI update pending |
+| `/orders/new` | Create an order | Admin and Waiter |
+| `/tables` | Table management | Admin and Waiter; Cashier read-only UI pending |
+| `/menu-items` | Menu management/browsing | Admin and Waiter; Cashier browsing UI pending |
 | `/categories` | Category management | Admin |
 | `/users` | User management | Admin |
 
@@ -574,58 +594,6 @@ API errors use a consistent shape:
 }
 ```
 
-### Security Considerations
-
-#### SQL injection
-
-Database access goes through Prisma's typed query API and parameterized driver
-queries; application input is never concatenated into SQL. The security suite
-attempts email and password injection during login and verifies that neither
-authentication nor stored data is compromised.
-
-#### Input validation
-
-Zod validates request bodies, route parameters, query strings, and environment
-variables. Object schemas are strict, so unexpected fields—including attempts
-to assign an Admin role during public registration—receive a structured `400`
-response. Numeric limits, UUID formats, enum values, email format, password
-length, upload type, upload size, and JSON payload size are constrained before
-domain logic runs.
-
-#### CSRF
-
-Authentication does not use ambient session cookies. The access token is kept
-in browser `sessionStorage` and attached explicitly as an `Authorization: Bearer`
-header, which a cross-site form cannot add automatically. CORS permits only the
-configured `FRONTEND_URL`, does not use a wildcard, and does not enable
-credentialed cross-origin requests. Tests verify that an untrusted origin is not
-allowed and that a protected mutation without a bearer token returns `401`.
-
-#### XSS
-
-The API returns untrusted strings as `application/json`, Helmet sends a Content
-Security Policy and `X-Content-Type-Options: nosniff`, and the React frontend
-renders values through normal text interpolation rather than raw HTML sinks.
-The security suite verifies the JSON content type and anti-XSS headers using a
-stored script-like value. Avoid introducing `dangerouslySetInnerHTML` unless a
-future feature also adds a reviewed sanitization strategy.
-
-Because access tokens are available to same-origin JavaScript, preventing XSS
-remains important even though the application is not cookie-authenticated.
-
-#### Test database safety
-
-`npm test` starts a new in-memory PGlite database for each integration test file
-and overrides `DATABASE_URL` only for that child process. Every integration suite
-also calls a fail-closed guard before applying migrations. The guard requires:
-
-- `NODE_ENV=test`;
-- an isolation marker supplied only by the test runner; and
-- the expected loopback host and dedicated PGlite port (`55432`).
-
-This prevents an accidentally configured development or production database
-from being migrated or modified by the integration tests.
-
 ## Quality Checks
 
 Run the complete backend verification:
@@ -639,17 +607,9 @@ npm test
 npm run build
 ```
 
-Run only the focused security checks with:
-
-```bash
-cd backend
-npm run test:security
-```
-
 The integration suite starts an isolated PostgreSQL-compatible PGlite instance
 and covers authentication, authorization, menu and table management, orders,
-dashboard data, user management, validation, security controls, and important
-database invariants.
+dashboard data, user management, validation, and important database invariants.
 
 Run the complete frontend verification:
 
@@ -682,7 +642,6 @@ npm run build
 - Changing a role or deleting an account does not revoke an already-issued
   stateless token; access ends when its short lifetime expires.
 - Date-based order filters and dashboard daily totals use UTC calendar days.
-
 - Optional image upload depends on Cloudinary and requires external credentials.
 - Real-time order updates through WebSockets or Server-Sent Events are not
   implemented; users receive current data when a screen loads or refreshes.
@@ -691,10 +650,12 @@ npm run build
 - Soft deletion and a complete audit log are not implemented. Core records use
   creation/update timestamps, and orders record their creating user, but deleted
   records are not retained as archived rows.
-
 - Reservation behavior is represented only by table status; scheduling and guest
   details are outside scope.
-  - The current total equals the subtotal. Taxes, discounts, service charges, and
+- Cashier authorization is complete in the backend, but Cashier-specific
+  frontend routing, navigation, and payment/cancellation controls are not yet
+  implemented.
+- The current total equals the subtotal. Taxes, discounts, service charges, and
   payment gateway integration are outside scope.
 
 ## Reviewer Verification
@@ -708,7 +669,7 @@ For a clean local review:
 4. Run all backend and frontend quality checks.
 5. Confirm the local setup instructions on a clean checkout.
 6. Open the deployed frontend or run both applications locally, then verify the
-   Admin and Staff role-specific workflows.
+   Admin and Waiter workflows and the backend Cashier authorization rules.
 
 ## License
 

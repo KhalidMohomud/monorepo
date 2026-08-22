@@ -7,5 +7,8 @@ import { authorize } from "../middleware/role.middleware.js";
 
 export const dashboardRouter = Router();
 
-dashboardRouter.use(authenticate, authorize(Role.ADMIN, Role.STAFF));
+dashboardRouter.use(
+  authenticate,
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+);
 dashboardRouter.get("/overview", overview);

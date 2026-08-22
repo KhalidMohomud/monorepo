@@ -20,7 +20,9 @@ import {
   updateOrderStatusSchema,
 } from "../validators/order.validator.js";
 
-const authenticatedUserId = (user: Express.Request["user"]): string => {
+const authenticatedUser = (
+  user: Express.Request["user"],
+): NonNullable<Express.Request["user"]> => {
   if (!user) {
     throw new AppError(
       401,
@@ -29,7 +31,7 @@ const authenticatedUserId = (user: Express.Request["user"]): string => {
     );
   }
 
-  return user.id;
+  return user;
 };
 
 export const list: RequestHandler = async (req, res, next) => {
@@ -54,9 +56,9 @@ export const getById: RequestHandler = async (req, res, next) => {
 
 export const create: RequestHandler = async (req, res, next) => {
   try {
-    const userId = authenticatedUserId(req.user);
+    const user = authenticatedUser(req.user);
     const input = createOrderSchema.parse(req.body);
-    const order = await createOrder(input, userId);
+    const order = await createOrder(input, user.id);
     res.status(201).json({ data: { order } });
   } catch (error) {
     next(error);
@@ -98,8 +100,9 @@ export const removeItem: RequestHandler = async (req, res, next) => {
 export const updateStatus: RequestHandler = async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
+    const user = authenticatedUser(req.user);
     const input = updateOrderStatusSchema.parse(req.body);
-    const order = await updateOrderStatus(id, input);
+    const order = await updateOrderStatus(id, input, user.role);
     res.status(200).json({ data: { order } });
   } catch (error) {
     next(error);

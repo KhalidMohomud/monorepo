@@ -1,5 +1,5 @@
 import { Prisma } from "../generated/prisma/client.js";
-import { OrderStatus, TableStatus } from "../generated/prisma/enums.js";
+import { OrderStatus, Role, TableStatus } from "../generated/prisma/enums.js";
 import type {
   AddOrderItemInput,
   CreateOrderInput,
@@ -28,6 +28,37 @@ const allowedTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
   [OrderStatus.SERVED]: [OrderStatus.PAID],
   [OrderStatus.PAID]: [],
   [OrderStatus.CANCELLED]: [],
+};
+
+const waiterStatusTargets: OrderStatus[] = [
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.SERVED,
+];
+
+const cashierStatusTargets: OrderStatus[] = [
+  OrderStatus.PAID,
+  OrderStatus.CANCELLED,
+];
+
+const requireStatusPermission = (
+  role: Role,
+  targetStatus: OrderStatus,
+): void => {
+  if (role === Role.ADMIN) {
+    return;
+  }
+
+  const allowedTargets =
+    role === Role.WAITER ? waiterStatusTargets : cashierStatusTargets;
+
+  if (!allowedTargets.includes(targetStatus)) {
+    throw new AppError(
+      403,
+      "ORDER_STATUS_FORBIDDEN",
+      "Your role cannot apply this order status",
+    );
+  }
 };
 
 const orderInclude = {
@@ -389,7 +420,10 @@ export const deleteOrderItem = async (orderId: string, itemId: string) => {
 export const updateOrderStatus = async (
   orderId: string,
   input: UpdateOrderStatusInput,
+  actorRole: Role,
 ) => {
+  requireStatusPermission(actorRole, input.status);
+
   await prisma.$transaction(async (transaction) => {
     const order = await transaction.order.findUnique({
       where: { id: orderId },

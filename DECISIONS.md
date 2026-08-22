@@ -35,12 +35,13 @@ environment configuration. Refresh tokens are outside the current MVP scope.
 
 ## Role assignment
 
-Public registration always creates a `STAFF` user. It never accepts a requested
-role, preventing public privilege escalation. Administrator accounts can be
-created only by an authenticated administrator or through the controlled
-reviewer/demo seed. The Admin API prevents self-deletion and self-demotion, and
-user records referenced by order history are retained by the database foreign
-key.
+Public registration always creates a `WAITER` user. It never accepts a requested
+role, preventing public privilege escalation. Administrator, Waiter, and Cashier
+accounts can be created through Admin-protected user management or the
+controlled reviewer/demo seed. Splitting operational staff into `WAITER` and
+`CASHIER` keeps payment and cancellation authority separate from order entry.
+The Admin API prevents self-deletion and self-demotion, and user records
+referenced by order history are retained by the database foreign key.
 
 ## Historical order item snapshots
 
@@ -50,10 +51,12 @@ alter the historical meaning or totals of an existing order.
 
 ## Day 2 authorization boundaries
 
-Category and menu-item writes are administrator operations. Staff can read only
-available menu items, and that restriction is enforced in the service layer so
-it cannot be bypassed by changing the UI. Both roles can manage table state for
-day-to-day restaurant operations.
+Category and menu-item writes are administrator operations. Waiter and Cashier
+can read only available menu items, and that restriction is enforced in the
+service layer so it cannot be bypassed by changing the UI. Waiter manages table
+state, order entry, and normal preparation/service transitions. Cashier can read
+operational data but only performs payment and cancellation transitions. Admin
+retains full access.
 
 ## Money at the API boundary
 

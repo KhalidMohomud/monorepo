@@ -15,17 +15,19 @@ process.env.CLOUDINARY_API_SECRET = "";
 
 const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 
-const migrationSql = await readFile(
-  new URL(
-    "../prisma/migrations/20260819181500_initial_schema/migration.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const migrationFiles = [
+  "../prisma/migrations/20260819181500_initial_schema/migration.sql",
+  "../prisma/migrations/20260822110000_split_staff_roles/migration.sql",
+];
 const setupClient = new Client({ connectionString: testDatabaseUrl });
 
 await setupClient.connect();
-await setupClient.query(migrationSql);
+for (const migrationFile of migrationFiles) {
+  const migrationSql = await readFile(new URL(migrationFile, import.meta.url), {
+    encoding: "utf8",
+  });
+  await setupClient.query(migrationSql);
+}
 await setupClient.end();
 
 const { app } = await import("../src/app.js");
@@ -77,9 +79,13 @@ test("Day 2 domain APIs", async (t) => {
     userId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
     role: Role.ADMIN,
   });
-  const staffToken = signAccessToken({
+  const waiterToken = signAccessToken({
     userId: "cc21da0d-628c-468b-81da-fb9a0020af22",
-    role: Role.STAFF,
+    role: Role.WAITER,
+  });
+  const cashierToken = signAccessToken({
+    userId: "39d01dcd-f10e-47ee-bd45-8a1958bc34f7",
+    role: Role.CASHIER,
   });
 
   const request = async <T>(
@@ -126,12 +132,12 @@ test("Day 2 domain APIs", async (t) => {
     const unauthenticated = await request<{ categories: Category[] }>(
       "/categories",
     );
-    const staff = await request<{ categories: Category[] }>("/categories", {
-      token: staffToken,
+    const waiter = await request<{ categories: Category[] }>("/categories", {
+      token: waiterToken,
     });
 
     assert.equal(unauthenticated.status, 401);
-    assert.equal(staff.status, 403);
+    assert.equal(waiter.status, 403);
   });
 
   await t.test("creates and updates a category as Admin", async () => {
@@ -182,7 +188,7 @@ test("Day 2 domain APIs", async (t) => {
   await t.test("restricts menu mutations to Admin", async () => {
     const response = await request<{ menuItem: MenuItem }>("/menu-items", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: {
         categoryId,
         name: "Forbidden",
@@ -194,11 +200,11 @@ test("Day 2 domain APIs", async (t) => {
   });
 
   await t.test("protects and validates menu image uploads", async () => {
-    const staffForm = new FormData();
-    const staffResponse = await fetch(`${baseUrl}/menu-items/images`, {
+    const waiterForm = new FormData();
+    const waiterResponse = await fetch(`${baseUrl}/menu-items/images`, {
       method: "POST",
-      headers: { authorization: `Bearer ${staffToken}` },
-      body: staffForm,
+      headers: { authorization: `Bearer ${waiterToken}` },
+      body: waiterForm,
     });
 
     const emptyAdminForm = new FormData();
@@ -245,7 +251,7 @@ test("Day 2 domain APIs", async (t) => {
         imageUrl: string;
       }>;
 
-    assert.equal(staffResponse.status, 403);
+    assert.equal(waiterResponse.status, 403);
     assert.equal(emptyAdminResponse.status, 400);
     assert.equal(emptyAdminBody.error?.code, "IMAGE_REQUIRED");
     assert.equal(invalidImageResponse.status, 415);
@@ -286,19 +292,28 @@ test("Day 2 domain APIs", async (t) => {
     assert(availableMenuItemId && unavailableMenuItemId);
   });
 
-  await t.test("shows Staff only available menu items", async () => {
-    const staffResponse = await request<{ menuItems: MenuItem[] }>(
+  await t.test("shows operational roles only available menu items", async () => {
+    const waiterResponse = await request<{ menuItems: MenuItem[] }>(
       "/menu-items",
-      { token: staffToken },
+      { token: waiterToken },
+    );
+    const cashierResponse = await request<{ menuItems: MenuItem[] }>(
+      "/menu-items",
+      { token: cashierToken },
     );
     const adminResponse = await request<{ menuItems: MenuItem[] }>(
       "/menu-items?isAvailable=false",
       { token: adminToken },
     );
 
-    assert.equal(staffResponse.status, 200);
+    assert.equal(waiterResponse.status, 200);
     assert.deepEqual(
-      staffResponse.body?.data?.menuItems.map((item) => item.id),
+      waiterResponse.body?.data?.menuItems.map((item) => item.id),
+      [availableMenuItemId],
+    );
+    assert.equal(cashierResponse.status, 200);
+    assert.deepEqual(
+      cashierResponse.body?.data?.menuItems.map((item) => item.id),
       [availableMenuItemId],
     );
     assert.deepEqual(
@@ -341,10 +356,10 @@ test("Day 2 domain APIs", async (t) => {
     assert.equal(response.body?.error?.code, "CATEGORY_IN_USE");
   });
 
-  await t.test("allows Staff to create and manage tables", async () => {
+  await t.test("allows Waiter to create and manage tables", async () => {
     const created = await request<{ table: RestaurantTable }>("/tables", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: { tableNumber: 1, capacity: 4 },
     });
 
@@ -357,7 +372,7 @@ test("Day 2 domain APIs", async (t) => {
       `/tables/${tableId}/status`,
       {
         method: "PATCH",
-        token: staffToken,
+        token: waiterToken,
         body: { status: "OCCUPIED" },
       },
     );
@@ -374,7 +389,7 @@ test("Day 2 domain APIs", async (t) => {
     });
     const invalid = await request<{ table: RestaurantTable }>("/tables", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: { tableNumber: 2, capacity: 0 },
     });
 
@@ -383,10 +398,37 @@ test("Day 2 domain APIs", async (t) => {
     assert.equal(invalid.status, 400);
   });
 
+  await t.test("allows Cashier to view but not manage tables", async () => {
+    const listResponse = await request<{ tables: RestaurantTable[] }>(
+      "/tables",
+      { token: cashierToken },
+    );
+    const createResponse = await request<{ table: RestaurantTable }>(
+      "/tables",
+      {
+        method: "POST",
+        token: cashierToken,
+        body: { tableNumber: 3, capacity: 2 },
+      },
+    );
+    const statusResponse = await request<{ table: RestaurantTable }>(
+      `/tables/${tableId}/status`,
+      {
+        method: "PATCH",
+        token: cashierToken,
+        body: { status: "AVAILABLE" },
+      },
+    );
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(createResponse.status, 403);
+    assert.equal(statusResponse.status, 403);
+  });
+
   await t.test("filters tables by status", async () => {
     const response = await request<{ tables: RestaurantTable[] }>(
       "/tables?status=OCCUPIED",
-      { token: staffToken },
+      { token: waiterToken },
     );
 
     assert.equal(response.status, 200);
@@ -411,7 +453,7 @@ test("Day 2 domain APIs", async (t) => {
     });
     const tableResponse = await request(`/tables/${tableId}`, {
       method: "DELETE",
-      token: staffToken,
+      token: waiterToken,
     });
 
     assert.equal(categoryResponse.status, 204);

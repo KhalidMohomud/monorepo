@@ -20,6 +20,7 @@ const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 const migrationFiles = [
   "../prisma/migrations/20260819181500_initial_schema/migration.sql",
   "../prisma/migrations/20260820140000_order_invariants/migration.sql",
+  "../prisma/migrations/20260822110000_split_staff_roles/migration.sql",
 ];
 const setupClient = new Client({ connectionString: testDatabaseUrl });
 
@@ -70,9 +71,14 @@ test("dashboard overview API", async (t) => {
   assert(address && typeof address !== "string");
   const baseUrl = `http://127.0.0.1:${address.port}/api/V1`;
   const adminId = "e355f12c-75ec-428b-94f1-28ea445a8e8b";
-  const staffId = "facf4b0b-c9f0-4c50-ae60-8507426c33ec";
+  const waiterId = "facf4b0b-c9f0-4c50-ae60-8507426c33ec";
+  const cashierId = "39d01dcd-f10e-47ee-bd45-8a1958bc34f7";
   const adminToken = signAccessToken({ userId: adminId, role: Role.ADMIN });
-  const staffToken = signAccessToken({ userId: staffId, role: Role.STAFF });
+  const waiterToken = signAccessToken({ userId: waiterId, role: Role.WAITER });
+  const cashierToken = signAccessToken({
+    userId: cashierId,
+    role: Role.CASHIER,
+  });
 
   const requestOverview = async (token?: string) => {
     const response = await fetch(`${baseUrl}/dashboard/overview`, {
@@ -100,11 +106,18 @@ test("dashboard overview API", async (t) => {
         role: Role.ADMIN,
       },
       {
-        id: staffId,
-        name: "Dashboard Staff",
-        email: "dashboard-staff@merhaba.test",
+        id: waiterId,
+        name: "Dashboard Waiter",
+        email: "dashboard-waiter@merhaba.test",
         passwordHash: "unused-in-token-tests",
-        role: Role.STAFF,
+        role: Role.WAITER,
+      },
+      {
+        id: cashierId,
+        name: "Dashboard Cashier",
+        email: "dashboard-cashier@merhaba.test",
+        passwordHash: "unused-in-token-tests",
+        role: Role.CASHIER,
       },
     ],
   });
@@ -161,7 +174,7 @@ test("dashboard overview API", async (t) => {
     const order = await prisma.order.create({
       data: {
         tableId: tables[input.tableIndex]!.id,
-        createdById: staffId,
+        createdById: waiterId,
         status: input.status,
         subtotal: input.total,
         total: input.total,
@@ -232,8 +245,8 @@ test("dashboard overview API", async (t) => {
     assert.equal(response.status, 401);
   });
 
-  await t.test("returns operational metrics to Staff", async () => {
-    const response = await requestOverview(staffToken);
+  await t.test("returns operational metrics to Waiter", async () => {
+    const response = await requestOverview(waiterToken);
     const dashboard = response.body?.data?.dashboard;
 
     assert.equal(response.status, 200);
@@ -251,6 +264,14 @@ test("dashboard overview API", async (t) => {
       READY: 1,
       SERVED: 1,
     });
+  });
+
+  await t.test("returns operational metrics to Cashier", async () => {
+    const response = await requestOverview(cashierToken);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body?.data?.dashboard.summary.activeOrders, 5);
+    assert.equal(response.body?.data?.dashboard.summary.todayRevenue, "45.50");
   });
 
   await t.test("returns five sorted and safe recent orders", async () => {

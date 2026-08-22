@@ -15,6 +15,7 @@ const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 const migrationFiles = [
   "../prisma/migrations/20260819181500_initial_schema/migration.sql",
   "../prisma/migrations/20260820140000_order_invariants/migration.sql",
+  "../prisma/migrations/20260822110000_split_staff_roles/migration.sql",
 ];
 const setupClient = new Client({ connectionString: testDatabaseUrl });
 
@@ -72,9 +73,14 @@ test("Day 3 order APIs", async (t) => {
   assert(address && typeof address !== "string");
   const baseUrl = `http://127.0.0.1:${address.port}/api/V1`;
   const adminId = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
-  const staffId = "cc21da0d-628c-468b-81da-fb9a0020af22";
+  const waiterId = "cc21da0d-628c-468b-81da-fb9a0020af22";
+  const cashierId = "39d01dcd-f10e-47ee-bd45-8a1958bc34f7";
   const adminToken = signAccessToken({ userId: adminId, role: Role.ADMIN });
-  const staffToken = signAccessToken({ userId: staffId, role: Role.STAFF });
+  const waiterToken = signAccessToken({ userId: waiterId, role: Role.WAITER });
+  const cashierToken = signAccessToken({
+    userId: cashierId,
+    role: Role.CASHIER,
+  });
 
   const request = async <T>(
     path: string,
@@ -114,11 +120,18 @@ test("Day 3 order APIs", async (t) => {
         role: Role.ADMIN,
       },
       {
-        id: staffId,
-        name: "Test Staff",
-        email: "day3-staff@merhaba.test",
+        id: waiterId,
+        name: "Test Waiter",
+        email: "day3-waiter@merhaba.test",
         passwordHash: "unused-in-token-tests",
-        role: Role.STAFF,
+        role: Role.WAITER,
+      },
+      {
+        id: cashierId,
+        name: "Test Cashier",
+        email: "day3-cashier@merhaba.test",
+        passwordHash: "unused-in-token-tests",
+        role: Role.CASHIER,
       },
     ],
   });
@@ -180,7 +193,7 @@ test("Day 3 order APIs", async (t) => {
   await t.test("validates order creation and server-owned totals", async () => {
     const duplicateItems = await request<{ order: Order }>("/orders", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: {
         tableId: availableTable.id,
         items: [
@@ -191,7 +204,7 @@ test("Day 3 order APIs", async (t) => {
     });
     const suppliedTotal = await request<{ order: Order }>("/orders", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: {
         tableId: availableTable.id,
         items: [{ menuItemId: soup.id, quantity: 1 }],
@@ -206,7 +219,7 @@ test("Day 3 order APIs", async (t) => {
   await t.test("creates an order with price and name snapshots", async () => {
     const response = await request<{ order: Order }>("/orders", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: {
         tableId: availableTable.id,
         items: [{ menuItemId: soup.id, quantity: 2 }],
@@ -219,7 +232,7 @@ test("Day 3 order APIs", async (t) => {
     orderId = order.id;
     soupOrderItemId = order.items[0]?.id ?? "";
     assert(soupOrderItemId);
-    assert.equal(order.createdBy.id, staffId);
+    assert.equal(order.createdBy.id, waiterId);
     assert.equal(order.status, OrderStatus.PENDING);
     assert.equal(order.subtotal, "9.00");
     assert.equal(order.total, "9.00");
@@ -228,10 +241,32 @@ test("Day 3 order APIs", async (t) => {
     assert.equal(order.items[0]?.lineTotal, "9.00");
   });
 
+  await t.test("prevents Cashier from creating or editing orders", async () => {
+    const createResponse = await request<{ order: Order }>("/orders", {
+      method: "POST",
+      token: cashierToken,
+      body: {
+        tableId: reservedTable.id,
+        items: [{ menuItemId: meal.id, quantity: 1 }],
+      },
+    });
+    const addItemResponse = await request<{ order: Order }>(
+      `/orders/${orderId}/items`,
+      {
+        method: "POST",
+        token: cashierToken,
+        body: { menuItemId: meal.id, quantity: 1 },
+      },
+    );
+
+    assert.equal(createResponse.status, 403);
+    assert.equal(addItemResponse.status, 403);
+  });
+
   await t.test("links the active order to its occupied table", async () => {
     const response = await request<{ table: RestaurantTable }>(
       `/tables/${availableTable.id}`,
-      { token: staffToken },
+      { token: waiterToken },
     );
 
     assert.equal(response.status, 200);
@@ -243,7 +278,7 @@ test("Day 3 order APIs", async (t) => {
   await t.test("prevents another active order or manual table release", async () => {
     const duplicateOrder = await request<{ order: Order }>("/orders", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: {
         tableId: availableTable.id,
         items: [{ menuItemId: meal.id, quantity: 1 }],
@@ -253,7 +288,7 @@ test("Day 3 order APIs", async (t) => {
       `/tables/${availableTable.id}/status`,
       {
         method: "PATCH",
-        token: staffToken,
+        token: waiterToken,
         body: { status: TableStatus.AVAILABLE },
       },
     );
@@ -272,7 +307,7 @@ test("Day 3 order APIs", async (t) => {
       `/orders/${orderId}/items`,
       {
         method: "POST",
-        token: staffToken,
+        token: waiterToken,
         body: { menuItemId: soup.id, quantity: 1 },
       },
     );
@@ -280,7 +315,7 @@ test("Day 3 order APIs", async (t) => {
       `/orders/${orderId}/items`,
       {
         method: "POST",
-        token: staffToken,
+        token: waiterToken,
         body: { menuItemId: unavailableItem.id, quantity: 1 },
       },
     );
@@ -288,7 +323,7 @@ test("Day 3 order APIs", async (t) => {
       `/orders/${orderId}/items`,
       {
         method: "POST",
-        token: staffToken,
+        token: waiterToken,
         body: { menuItemId: meal.id, quantity: 1 },
       },
     );
@@ -311,7 +346,7 @@ test("Day 3 order APIs", async (t) => {
       `/orders/${orderId}/items/${soupOrderItemId}`,
       {
         method: "PATCH",
-        token: staffToken,
+        token: waiterToken,
         body: { quantity: 3 },
       },
     );
@@ -347,11 +382,11 @@ test("Day 3 order APIs", async (t) => {
   await t.test("removes items but prevents an empty active order", async () => {
     const removed = await request<{ order: Order }>(
       `/orders/${orderId}/items/${mealOrderItemId}`,
-      { method: "DELETE", token: staffToken },
+      { method: "DELETE", token: waiterToken },
     );
     const removeLast = await request<{ order: Order }>(
       `/orders/${orderId}/items/${soupOrderItemId}`,
-      { method: "DELETE", token: staffToken },
+      { method: "DELETE", token: waiterToken },
     );
 
     assert.equal(removed.status, 200);
@@ -365,7 +400,7 @@ test("Day 3 order APIs", async (t) => {
       `/orders/${orderId}/status`,
       {
         method: "PATCH",
-        token: staffToken,
+        token: waiterToken,
         body: { status: OrderStatus.READY },
       },
     );
@@ -375,36 +410,74 @@ test("Day 3 order APIs", async (t) => {
       "INVALID_ORDER_STATUS_TRANSITION",
     );
 
+    const cashierProgressAttempt = await request<{ order: Order }>(
+      `/orders/${orderId}/status`,
+      {
+        method: "PATCH",
+        token: cashierToken,
+        body: { status: OrderStatus.PREPARING },
+      },
+    );
+    assert.equal(cashierProgressAttempt.status, 403);
+    assert.equal(
+      cashierProgressAttempt.body?.error?.code,
+      "ORDER_STATUS_FORBIDDEN",
+    );
+
     for (const status of [
       OrderStatus.PREPARING,
       OrderStatus.READY,
       OrderStatus.SERVED,
-      OrderStatus.PAID,
     ]) {
       const response = await request<{ order: Order }>(
         `/orders/${orderId}/status`,
-        { method: "PATCH", token: staffToken, body: { status } },
+        { method: "PATCH", token: waiterToken, body: { status } },
       );
       assert.equal(response.status, 200);
       assert.equal(response.body?.data?.order.status, status);
     }
+
+    const waiterPaymentAttempt = await request<{ order: Order }>(
+      `/orders/${orderId}/status`,
+      {
+        method: "PATCH",
+        token: waiterToken,
+        body: { status: OrderStatus.PAID },
+      },
+    );
+    assert.equal(waiterPaymentAttempt.status, 403);
+    assert.equal(
+      waiterPaymentAttempt.body?.error?.code,
+      "ORDER_STATUS_FORBIDDEN",
+    );
+
+    const cashierPayment = await request<{ order: Order }>(
+      `/orders/${orderId}/status`,
+      {
+        method: "PATCH",
+        token: cashierToken,
+        body: { status: OrderStatus.PAID },
+      },
+    );
+    assert.equal(cashierPayment.status, 200);
+    assert.equal(cashierPayment.body?.data?.order.status, OrderStatus.PAID);
   });
 
   await t.test("locks completed orders and releases the table", async () => {
     const orderResponse = await request<{ order: Order }>(`/orders/${orderId}`, {
-      token: staffToken,
+      token: waiterToken,
     });
     const itemUpdate = await request<{ order: Order }>(
       `/orders/${orderId}/items/${soupOrderItemId}`,
       {
         method: "PATCH",
-        token: staffToken,
+        token: waiterToken,
         body: { quantity: 2 },
       },
     );
     const tableResponse = await request<{ table: RestaurantTable }>(
       `/tables/${availableTable.id}`,
-      { token: staffToken },
+      { token: waiterToken },
     );
 
     assert.equal(orderResponse.body?.data?.order.status, OrderStatus.PAID);
@@ -424,19 +497,19 @@ test("Day 3 order APIs", async (t) => {
       { token: adminToken },
     );
     const active = await request<{ orders: Order[] }>("/orders?active=true", {
-      token: staffToken,
+      token: waiterToken,
     });
     const conflicting = await request<{ orders: Order[] }>(
       "/orders?active=true&status=PAID",
-      { token: staffToken },
+      { token: waiterToken },
     );
     const date = new Date().toISOString().slice(0, 10);
     const today = await request<{ orders: Order[] }>(`/orders?date=${date}`, {
-      token: staffToken,
+      token: waiterToken,
     });
     const invalidDate = await request<{ orders: Order[] }>(
       "/orders?date=20-08-2026",
-      { token: staffToken },
+      { token: waiterToken },
     );
 
     assert.equal(history.status, 200);
@@ -453,7 +526,7 @@ test("Day 3 order APIs", async (t) => {
     assert.equal(invalidDate.status, 400);
   });
 
-  await t.test("allows reserved tables and cancellation releases them", async () => {
+  await t.test("allows only Cashier or Admin to cancel orders", async () => {
     const created = await request<{ order: Order }>("/orders", {
       method: "POST",
       token: adminToken,
@@ -463,19 +536,32 @@ test("Day 3 order APIs", async (t) => {
       },
     });
     assert.equal(created.status, 201);
+    const waiterCancellation = await request<{ order: Order }>(
+      `/orders/${created.body?.data?.order.id}/status`,
+      {
+        method: "PATCH",
+        token: waiterToken,
+        body: { status: OrderStatus.CANCELLED },
+      },
+    );
     const cancelled = await request<{ order: Order }>(
       `/orders/${created.body?.data?.order.id}/status`,
       {
         method: "PATCH",
-        token: adminToken,
+        token: cashierToken,
         body: { status: OrderStatus.CANCELLED },
       },
     );
     const table = await request<{ table: RestaurantTable }>(
       `/tables/${reservedTable.id}`,
-      { token: staffToken },
+      { token: waiterToken },
     );
 
+    assert.equal(waiterCancellation.status, 403);
+    assert.equal(
+      waiterCancellation.body?.error?.code,
+      "ORDER_STATUS_FORBIDDEN",
+    );
     assert.equal(cancelled.status, 200);
     assert.equal(cancelled.body?.data?.order.status, OrderStatus.CANCELLED);
     assert.equal(table.body?.data?.table.status, TableStatus.AVAILABLE);
@@ -485,7 +571,7 @@ test("Day 3 order APIs", async (t) => {
   await t.test("rejects new orders for tables being cleaned", async () => {
     const response = await request<{ order: Order }>("/orders", {
       method: "POST",
-      token: staffToken,
+      token: waiterToken,
       body: {
         tableId: cleaningTable.id,
         items: [{ menuItemId: meal.id, quantity: 1 }],

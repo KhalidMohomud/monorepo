@@ -14,14 +14,31 @@ import { authorize } from "../middleware/role.middleware.js";
 
 export const restaurantTableRouter = Router();
 
-restaurantTableRouter.use(
-  authenticate,
-  authorize(Role.ADMIN, Role.STAFF),
-);
+restaurantTableRouter.use(authenticate);
 
-restaurantTableRouter.get("/", list);
-restaurantTableRouter.get("/:id", getById);
-restaurantTableRouter.post("/", create);
-restaurantTableRouter.patch("/:id", update);
-restaurantTableRouter.patch("/:id/status", updateStatus);
-restaurantTableRouter.delete("/:id", remove);
+restaurantTableRouter.get(
+  "/",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  list,
+);
+restaurantTableRouter.get(
+  "/:id",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  getById,
+);
+restaurantTableRouter.post("/", authorize(Role.ADMIN, Role.WAITER), create);
+restaurantTableRouter.patch(
+  "/:id",
+  authorize(Role.ADMIN, Role.WAITER),
+  update,
+);
+restaurantTableRouter.patch(
+  "/:id/status",
+  authorize(Role.ADMIN, Role.WAITER),
+  updateStatus,
+);
+restaurantTableRouter.delete(
+  "/:id",
+  authorize(Role.ADMIN, Role.WAITER),
+  remove,
+);

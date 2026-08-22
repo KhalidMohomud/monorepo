@@ -159,7 +159,10 @@ const readHiddenInput = (prompt: string): Promise<string> => {
 };
 
 const resolveSeedPassword = async (
-  environmentName: "SEED_ADMIN_PASSWORD" | "SEED_STAFF_PASSWORD",
+  environmentName:
+    | "SEED_ADMIN_PASSWORD"
+    | "SEED_WAITER_PASSWORD"
+    | "SEED_CASHIER_PASSWORD",
   accountLabel: string,
 ): Promise<string> => {
   const configuredPassword = process.env[environmentName];
@@ -193,15 +196,21 @@ const seed = async (): Promise<void> => {
     "SEED_ADMIN_PASSWORD",
     "Admin",
   );
-  const staffPassword = await resolveSeedPassword(
-    "SEED_STAFF_PASSWORD",
-    "Staff",
+  const waiterPassword = await resolveSeedPassword(
+    "SEED_WAITER_PASSWORD",
+    "Waiter",
+  );
+  const cashierPassword = await resolveSeedPassword(
+    "SEED_CASHIER_PASSWORD",
+    "Cashier",
   );
 
-  const [adminPasswordHash, staffPasswordHash] = await Promise.all([
-    hashPassword(adminPassword),
-    hashPassword(staffPassword),
-  ]);
+  const [adminPasswordHash, waiterPasswordHash, cashierPasswordHash] =
+    await Promise.all([
+      hashPassword(adminPassword),
+      hashPassword(waiterPassword),
+      hashPassword(cashierPassword),
+    ]);
 
   const result = await prisma.$transaction(async (transaction) => {
     const categories = await Promise.all(
@@ -235,17 +244,32 @@ const seed = async (): Promise<void> => {
         select: { email: true, role: true },
       }),
       transaction.user.upsert({
-        where: { email: "staff@merhaba.test" },
+        where: { email: "waiter@merhaba.test" },
         update: {
-          name: "Merhaba Staff",
-          passwordHash: staffPasswordHash,
-          role: Role.STAFF,
+          name: "Merhaba Waiter",
+          passwordHash: waiterPasswordHash,
+          role: Role.WAITER,
         },
         create: {
-          name: "Merhaba Staff",
-          email: "staff@merhaba.test",
-          passwordHash: staffPasswordHash,
-          role: Role.STAFF,
+          name: "Merhaba Waiter",
+          email: "waiter@merhaba.test",
+          passwordHash: waiterPasswordHash,
+          role: Role.WAITER,
+        },
+        select: { email: true, role: true },
+      }),
+      transaction.user.upsert({
+        where: { email: "cashier@merhaba.test" },
+        update: {
+          name: "Merhaba Cashier",
+          passwordHash: cashierPasswordHash,
+          role: Role.CASHIER,
+        },
+        create: {
+          name: "Merhaba Cashier",
+          email: "cashier@merhaba.test",
+          passwordHash: cashierPasswordHash,
+          role: Role.CASHIER,
         },
         select: { email: true, role: true },
       }),

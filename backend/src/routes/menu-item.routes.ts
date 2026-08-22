@@ -16,14 +16,22 @@ import { uploadMenuItemImage } from "../middleware/image-upload.middleware.js";
 export const menuItemRouter = Router();
 
 menuItemRouter.use(authenticate);
-menuItemRouter.get("/", authorize(Role.ADMIN, Role.STAFF), list);
+menuItemRouter.get(
+  "/",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  list,
+);
 menuItemRouter.post(
   "/images",
   authorize(Role.ADMIN),
   uploadMenuItemImage,
   upload,
 );
-menuItemRouter.get("/:id", authorize(Role.ADMIN, Role.STAFF), getById);
+menuItemRouter.get(
+  "/:id",
+  authorize(Role.ADMIN, Role.WAITER, Role.CASHIER),
+  getById,
+);
 menuItemRouter.post("/", authorize(Role.ADMIN), create);
 menuItemRouter.patch("/:id", authorize(Role.ADMIN), update);
 menuItemRouter.delete("/:id", authorize(Role.ADMIN), remove);
