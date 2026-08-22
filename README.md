@@ -8,6 +8,17 @@ The project was built as a five-day Full-Stack Developer technical assessment.
 Its focus is a coherent working core, clear authorization boundaries, reliable
 database behavior, and code that is straightforward to explain and maintain.
 
+## Live Deployment
+
+| Service | URL |
+| --- | --- |
+| Frontend | [Merhaba Order Desk](https://monorepo-production-02c5.up.railway.app) |
+| Backend health check | [GET /api/health](https://monorepo-production-4764.up.railway.app/api/health) |
+
+The frontend and backend run as separate Railway services from the same
+repository. The deployed frontend communicates with the API over HTTPS, and
+the API CORS policy permits the deployed frontend origin explicitly.
+
 ## Current Status
 
 The core assessment workflows are implemented across the API and frontend,
@@ -21,7 +32,7 @@ with remaining trade-offs recorded in [Known Limitations](#known-limitations):
 - administrator-managed user accounts;
 - idempotent demo data seeding; and
 - responsive, role-aware frontend screens with loading, error, confirmation,
-  and success feedback.
+  success, session-expiration, and automatic logout feedback.
 
 The optional reporting page, real-time updates, payment processing, inventory,
 and advanced reservation workflows are not part of the implemented MVP.
@@ -35,6 +46,7 @@ and advanced reservation workflows are not part of the implemented MVP.
 - TypeScript
 - Tailwind CSS 4
 - ESLint with the Next.js configuration
+- Browser `sessionStorage` for the short-lived access-token session
 
 ### Backend
 
@@ -54,6 +66,8 @@ and advanced reservation workflows are not part of the implemented MVP.
 - Node.js test runner
 - PGlite's PostgreSQL-compatible socket server for isolated backend integration
   tests
+- A dedicated security integration suite covering injection, validation,
+  browser-origin controls, untrusted text responses, and test-database isolation
 
 ## Architecture
 
@@ -309,6 +323,58 @@ npm run build
 npm start
 ```
 
+## Production Deployment
+
+The production application is deployed on Railway as two services backed by a
+PostgreSQL database. Keeping the services separate preserves the same
+frontend/backend boundary used in local development.
+
+### Frontend service
+
+| Setting | Value |
+| --- | --- |
+| Root directory | `/frontend` |
+| Build command | `npm run build` |
+| Start command | `npm start` |
+| Public URL | `https://monorepo-production-02c5.up.railway.app` |
+
+Required frontend variable:
+
+```env
+NEXT_PUBLIC_API_URL=https://monorepo-production-4764.up.railway.app/api
+```
+
+`NEXT_PUBLIC_API_URL` is compiled into the browser bundle. Redeploy the
+frontend after changing it.
+
+### Backend service
+
+| Setting | Value |
+| --- | --- |
+| Root directory | `/backend` |
+| Build command | `npm run build` |
+| Pre-deploy command | `npm run prisma:migrate:deploy` |
+| Start command | `npm start` |
+| Health-check path | `/api/health` |
+| Public URL | `https://monorepo-production-4764.up.railway.app` |
+
+Required production variables:
+
+```env
+NODE_ENV=production
+FRONTEND_URL=https://monorepo-production-02c5.up.railway.app
+DATABASE_URL=<managed-postgresql-connection-url>
+JWT_SECRET=<secret-with-at-least-32-characters>
+JWT_EXPIRES_IN_SECONDS=900
+```
+
+Railway supplies `PORT` at runtime. Cloudinary variables are required only when
+menu-image upload is enabled. Store database credentials, JWT secrets, seed
+passwords, and Cloudinary credentials in Railway Variables; never commit them.
+
+The frontend origin must match `FRONTEND_URL` exactly, without a trailing slash,
+because the backend intentionally does not use wildcard CORS in production.
+
 ## Authentication and Authorization
 
 Authentication uses short-lived signed JWT access tokens. Protected requests
@@ -508,6 +574,58 @@ API errors use a consistent shape:
 }
 ```
 
+### Security Considerations
+
+#### SQL injection
+
+Database access goes through Prisma's typed query API and parameterized driver
+queries; application input is never concatenated into SQL. The security suite
+attempts email and password injection during login and verifies that neither
+authentication nor stored data is compromised.
+
+#### Input validation
+
+Zod validates request bodies, route parameters, query strings, and environment
+variables. Object schemas are strict, so unexpected fields—including attempts
+to assign an Admin role during public registration—receive a structured `400`
+response. Numeric limits, UUID formats, enum values, email format, password
+length, upload type, upload size, and JSON payload size are constrained before
+domain logic runs.
+
+#### CSRF
+
+Authentication does not use ambient session cookies. The access token is kept
+in browser `sessionStorage` and attached explicitly as an `Authorization: Bearer`
+header, which a cross-site form cannot add automatically. CORS permits only the
+configured `FRONTEND_URL`, does not use a wildcard, and does not enable
+credentialed cross-origin requests. Tests verify that an untrusted origin is not
+allowed and that a protected mutation without a bearer token returns `401`.
+
+#### XSS
+
+The API returns untrusted strings as `application/json`, Helmet sends a Content
+Security Policy and `X-Content-Type-Options: nosniff`, and the React frontend
+renders values through normal text interpolation rather than raw HTML sinks.
+The security suite verifies the JSON content type and anti-XSS headers using a
+stored script-like value. Avoid introducing `dangerouslySetInnerHTML` unless a
+future feature also adds a reviewed sanitization strategy.
+
+Because access tokens are available to same-origin JavaScript, preventing XSS
+remains important even though the application is not cookie-authenticated.
+
+#### Test database safety
+
+`npm test` starts a new in-memory PGlite database for each integration test file
+and overrides `DATABASE_URL` only for that child process. Every integration suite
+also calls a fail-closed guard before applying migrations. The guard requires:
+
+- `NODE_ENV=test`;
+- an isolation marker supplied only by the test runner; and
+- the expected loopback host and dedicated PGlite port (`55432`).
+
+This prevents an accidentally configured development or production database
+from being migrated or modified by the integration tests.
+
 ## Quality Checks
 
 Run the complete backend verification:
@@ -521,9 +639,17 @@ npm test
 npm run build
 ```
 
+Run only the focused security checks with:
+
+```bash
+cd backend
+npm run test:security
+```
+
 The integration suite starts an isolated PostgreSQL-compatible PGlite instance
 and covers authentication, authorization, menu and table management, orders,
-dashboard data, user management, validation, and important database invariants.
+dashboard data, user management, validation, security controls, and important
+database invariants.
 
 Run the complete frontend verification:
 
@@ -544,8 +670,8 @@ npm run build
   table linking, active/history views, and order detail UI: complete.
 - Day 4 - dashboard overview, loading and error states, Admin user management,
   responsive navigation, and UI polish: complete.
-- Day 5 - final verification, documentation, and submission preparation: in
-  progress.
+- Day 5 - final verification, Railway deployment, documentation, and submission
+  preparation: complete.
 
 ## Known Limitations
 
@@ -556,17 +682,24 @@ npm run build
 - Changing a role or deleting an account does not revoke an already-issued
   stateless token; access ends when its short lifetime expires.
 - Date-based order filters and dashboard daily totals use UTC calendar days.
-- The current total equals the subtotal. Taxes, discounts, service charges, and
-  payment gateway integration are outside scope.
+
 - Optional image upload depends on Cloudinary and requires external credentials.
-- The optional report page, real-time updates, deployment, and demo video are not
-  included.
+- Real-time order updates through WebSockets or Server-Sent Events are not
+  implemented; users receive current data when a screen loads or refreshes.
+- A standalone reporting page is not implemented. The required dashboard does
+  provide the basic daily summary through today's order count and paid revenue.
+- Soft deletion and a complete audit log are not implemented. Core records use
+  creation/update timestamps, and orders record their creating user, but deleted
+  records are not retained as archived rows.
+
 - Reservation behavior is represented only by table status; scheduling and guest
   details are outside scope.
+  - The current total equals the subtotal. Taxes, discounts, service charges, and
+  payment gateway integration are outside scope.
 
-## Submission Notes
+## Reviewer Verification
 
-Before sharing the repository with reviewers:
+For a clean local review:
 
 1. Verify that all required environment variables are documented and no local
    `.env` file is tracked.
@@ -574,8 +707,8 @@ Before sharing the repository with reviewers:
 3. Run the seed and record the selected demo passwords securely for the reviewer.
 4. Run all backend and frontend quality checks.
 5. Confirm the local setup instructions on a clean checkout.
-6. Provide the repository URL, demo credentials, and any optional deployed demo
-   or walkthrough link.
+6. Open the deployed frontend or run both applications locally, then verify the
+   Admin and Staff role-specific workflows.
 
 ## License
 

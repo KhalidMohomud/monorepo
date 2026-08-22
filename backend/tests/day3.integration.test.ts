@@ -4,20 +4,19 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { Client } from "pg";
 
+import { assertIsolatedTestDatabase } from "./test-database-safety.js";
+
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-only-secret-that-is-at-least-32-characters";
 process.env.FRONTEND_URL = "http://localhost:3000";
 
-assert(
-  process.env.DATABASE_URL,
-  "DATABASE_URL is required for integration tests",
-);
+const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 
 const migrationFiles = [
   "../prisma/migrations/20260819181500_initial_schema/migration.sql",
   "../prisma/migrations/20260820140000_order_invariants/migration.sql",
 ];
-const setupClient = new Client({ connectionString: process.env.DATABASE_URL });
+const setupClient = new Client({ connectionString: testDatabaseUrl });
 
 await setupClient.connect();
 for (const migrationFile of migrationFiles) {

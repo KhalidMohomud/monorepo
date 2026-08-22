@@ -79,6 +79,7 @@ const runTestFile = async (testFile) => {
         env: {
           ...process.env,
           DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${port}/postgres`,
+          TEST_DATABASE_ISOLATED: "true",
         },
         stdio: "inherit",
       },
@@ -100,4 +101,3 @@ const runTestFile = async (testFile) => {
 for (const testFile of testFiles) {
   await runTestFile(testFile);
 }
-

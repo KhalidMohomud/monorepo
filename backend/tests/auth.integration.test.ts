@@ -6,15 +6,14 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { Client } from "pg";
 
+import { assertIsolatedTestDatabase } from "./test-database-safety.js";
+
 process.env.NODE_ENV = "test";
 const TEST_JWT_SECRET = "test-only-secret-that-is-at-least-32-characters";
 process.env.JWT_SECRET = TEST_JWT_SECRET;
 process.env.FRONTEND_URL = "http://localhost:3000";
 
-assert(
-  process.env.DATABASE_URL,
-  "DATABASE_URL is required for integration tests",
-);
+const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 
 const migrationSql = await readFile(
   new URL(
@@ -23,7 +22,7 @@ const migrationSql = await readFile(
   ),
   "utf8",
 );
-const setupClient = new Client({ connectionString: process.env.DATABASE_URL });
+const setupClient = new Client({ connectionString: testDatabaseUrl });
 
 await setupClient.connect();
 await setupClient.query(migrationSql);

@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { Client } from "pg";
 
+import { assertIsolatedTestDatabase } from "./test-database-safety.js";
+
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-only-secret-that-is-at-least-32-characters";
 process.env.FRONTEND_URL = "http://localhost:3000";
@@ -11,10 +13,7 @@ process.env.CLOUDINARY_NAME = "";
 process.env.CLOUDINARY_API_KEY = "";
 process.env.CLOUDINARY_API_SECRET = "";
 
-assert(
-  process.env.DATABASE_URL,
-  "DATABASE_URL is required for integration tests",
-);
+const testDatabaseUrl = assertIsolatedTestDatabase(process.env.DATABASE_URL);
 
 const migrationSql = await readFile(
   new URL(
@@ -23,7 +22,7 @@ const migrationSql = await readFile(
   ),
   "utf8",
 );
-const setupClient = new Client({ connectionString: process.env.DATABASE_URL });
+const setupClient = new Client({ connectionString: testDatabaseUrl });
 
 await setupClient.connect();
 await setupClient.query(migrationSql);
