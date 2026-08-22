@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { Role } from "@/lib/types";
+import { canCreateOrders } from "@/lib/permissions";
 import { Icon } from "./icon";
 import { primaryNavigation, type NavigationItem } from "./navigation";
 
@@ -26,7 +27,7 @@ function SidebarContent({
 }: SidebarContentProps) {
   const renderNavigation = (items: NavigationItem[]) =>
     items
-      .filter((item) => !item.adminOnly || role === "ADMIN")
+      .filter((item) => !item.roles || item.roles.includes(role))
       .map((item) => {
         const active = item.href
           ? item.href === "/"
@@ -83,12 +84,15 @@ function SidebarContent({
 
       <div className="px-6 pb-7">
         <Link
-          href="/orders/new"
+          href={canCreateOrders(role) ? "/orders/new" : "/orders"}
           onClick={onClose}
           className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#f1b64d,#eaa12d)] text-base font-bold text-white shadow-[0_6px_14px_rgba(172,112,20,0.18)] transition hover:bg-[linear-gradient(135deg,#eaaa3b,#dd9421)]"
         >
-          <Icon name="plus" className="size-5" />
-          New Order
+          <Icon
+            name={canCreateOrders(role) ? "plus" : "receipt"}
+            className="size-5"
+          />
+          {canCreateOrders(role) ? "New Order" : "Order Checkout"}
         </Link>
       </div>
 

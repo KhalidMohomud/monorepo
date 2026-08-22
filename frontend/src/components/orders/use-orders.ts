@@ -7,6 +7,12 @@ import { useAuth } from "@/components/auth-provider";
 import { useToast } from "@/components/toast-provider";
 import { getErrorMessage } from "@/lib/api";
 import { menuItemApi, orderApi } from "@/lib/domain-api";
+import {
+  canApplyOrderStatus,
+  canCreateOrders,
+  canManageOrderItems,
+  canViewOrderHistory,
+} from "@/lib/permissions";
 import type { MenuItem, Order, OrderStatus } from "@/lib/types";
 import { orderReference, orderStatusLabel } from "./order-config";
 
@@ -14,7 +20,7 @@ export type OrderView = "ACTIVE" | "HISTORY";
 
 export function useOrders() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const toast = useToast();
   const [view, setView] = useState<OrderView>("ACTIVE");
   const [orders, setOrders] = useState<Order[]>([]);
@@ -23,6 +29,10 @@ export function useOrders() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const canCreateOrder = canCreateOrders(user?.role);
+  const canEditItems = canManageOrderItems(user?.role);
+  const canViewHistory = canViewOrderHistory(user?.role);
+  const effectiveView: OrderView = canViewHistory ? view : "ACTIVE";
 
   const loadOrders = useCallback(async () => {
     if (!token) return;
@@ -30,8 +40,8 @@ export function useOrders() {
     setLoading(true);
     try {
       const [orderResponse, menuResponse] = await Promise.all([
-        orderApi.list(token, view === "ACTIVE"),
-        menuItemApi.list(token),
+        orderApi.list(token, effectiveView === "ACTIVE"),
+        canEditItems ? menuItemApi.list(token) : Promise.resolve(null),
       ]);
       const loadedOrders = orderResponse.data.orders;
       setOrders(loadedOrders);
@@ -41,13 +51,15 @@ export function useOrders() {
       setSelectedOrder(
         loadedOrders.find((order) => order.id === requestedOrderId) ?? null,
       );
-      setMenuItems(menuResponse.data.menuItems.filter((item) => item.isAvailable));
+      setMenuItems(
+        menuResponse?.data.menuItems.filter((item) => item.isAvailable) ?? [],
+      );
     } catch (error) {
       toast.error(getErrorMessage(error), "Unable to load orders");
     } finally {
       setLoading(false);
     }
-  }, [toast, token, view]);
+  }, [canEditItems, effectiveView, toast, token]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => void loadOrders(), 0);
@@ -56,6 +68,7 @@ export function useOrders() {
   }, [loadOrders]);
 
   const changeView = (nextView: OrderView) => {
+    if (nextView === "HISTORY" && !canViewHistory) return;
     setSelectedOrder(null);
     router.replace("/orders");
     setView(nextView);
@@ -116,7 +129,7 @@ export function useOrders() {
   };
 
   const addItem = async (menuItemId: string) => {
-    if (!token || !selectedOrder) return;
+    if (!token || !selectedOrder || !canEditItems) return;
     await runOrderMutation(
       () => orderApi.addItem(token, selectedOrder.id, { menuItemId, quantity: 1 }),
       "Menu item added to the order.",
@@ -124,7 +137,7 @@ export function useOrders() {
   };
 
   const updateItemQuantity = async (itemId: string, quantity: number) => {
-    if (!token || !selectedOrder) return;
+    if (!token || !selectedOrder || !canEditItems) return;
     await runOrderMutation(
       () => orderApi.updateItem(token, selectedOrder.id, itemId, quantity),
       "Item quantity updated.",
@@ -132,7 +145,7 @@ export function useOrders() {
   };
 
   const removeItem = async (itemId: string) => {
-    if (!token || !selectedOrder) return;
+    if (!token || !selectedOrder || !canEditItems) return;
     await runOrderMutation(
       () => orderApi.removeItem(token, selectedOrder.id, itemId),
       "Menu item removed from the order.",
@@ -140,7 +153,13 @@ export function useOrders() {
   };
 
   const updateStatus = async (status: OrderStatus) => {
-    if (!token || !selectedOrder) return;
+    if (
+      !token ||
+      !selectedOrder ||
+      !canApplyOrderStatus(user?.role, status)
+    ) {
+      return;
+    }
 
     const updatedOrder = await runOrderMutation(
       () => orderApi.updateStatus(token, selectedOrder.id, status),
@@ -156,6 +175,9 @@ export function useOrders() {
 
   return {
     addItem,
+    canCreateOrder,
+    canEditItems,
+    canViewHistory,
     closeOrder,
     filteredOrders,
     loading,
@@ -169,7 +191,8 @@ export function useOrders() {
     setView: changeView,
     updateItemQuantity,
     updateStatus,
-    view,
+    userRole: user?.role ?? null,
+    view: effectiveView,
     working,
   };
 }

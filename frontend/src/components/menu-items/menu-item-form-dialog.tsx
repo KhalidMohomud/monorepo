@@ -213,7 +213,7 @@ export function MenuItemFormDialog({
                 Available for ordering
               </span>
               <span className="mt-0.5 block text-xs text-stone-500">
-                Staff can add this item to new orders.
+                Waiters can add this item to new orders.
               </span>
             </span>
           </label>

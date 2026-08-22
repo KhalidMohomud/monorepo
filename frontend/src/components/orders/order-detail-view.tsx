@@ -1,5 +1,5 @@
 import { Icon } from "@/components/icon";
-import type { MenuItem, Order, OrderStatus } from "@/lib/types";
+import type { MenuItem, Order, OrderStatus, Role } from "@/lib/types";
 import {
   formatOrderDate,
   orderReference,
@@ -11,6 +11,7 @@ import { OrderStatusTimeline } from "./order-status-timeline";
 import { OrderSummaryPanel } from "./order-summary-panel";
 
 type OrderDetailViewProps = {
+  canEditItems: boolean;
   menuItems: MenuItem[];
   onAddItem: (menuItemId: string) => void;
   onAdvance: (status: OrderStatus) => void;
@@ -19,10 +20,12 @@ type OrderDetailViewProps = {
   onRemoveItem: (itemId: string) => void;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   order: Order;
+  role: Role | null;
   working: boolean;
 };
 
 export function OrderDetailView({
+  canEditItems,
   menuItems,
   onAddItem,
   onAdvance,
@@ -31,6 +34,7 @@ export function OrderDetailView({
   onRemoveItem,
   onUpdateQuantity,
   order,
+  role,
   working,
 }: OrderDetailViewProps) {
   return (
@@ -72,6 +76,7 @@ export function OrderDetailView({
           </section>
 
           <OrderItemsPanel
+            canEdit={canEditItems}
             menuItems={menuItems}
             onAddItem={onAddItem}
             onRemoveItem={onRemoveItem}
@@ -85,6 +90,7 @@ export function OrderDetailView({
           onAdvance={onAdvance}
           onCancelOrder={onCancelOrder}
           order={order}
+          role={role}
           working={working}
         />
       </div>

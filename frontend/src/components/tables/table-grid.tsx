@@ -4,6 +4,7 @@ import { TableCard } from "./table-card";
 import { TABLE_STATUS_LABELS, type TableFilter } from "./table-config";
 
 type TableGridProps = {
+  canManage: boolean;
   filter: TableFilter;
   loading: boolean;
   menuTableId: string | null;
@@ -34,9 +35,10 @@ function LoadingGrid() {
 }
 
 function EmptyTables({
+  canManage,
   filter,
   totalTableCount,
-}: Pick<TableGridProps, "filter" | "totalTableCount">) {
+}: Pick<TableGridProps, "canManage" | "filter" | "totalTableCount">) {
   const emptyTitle =
     totalTableCount === 0
       ? "No tables configured"
@@ -49,8 +51,10 @@ function EmptyTables({
       </div>
       <h2 className="mt-4 font-bold text-[#302c27]">{emptyTitle}</h2>
       <p className="mt-1 text-sm text-[#756d64]">
-        {totalTableCount === 0
+        {totalTableCount === 0 && canManage
           ? "Add your first dining table to begin managing the floor."
+          : totalTableCount === 0
+            ? "No dining tables are currently configured."
           : "Choose another status filter to view tables."}
       </p>
     </section>
@@ -66,6 +70,7 @@ export function TableGrid(props: TableGridProps) {
   if (props.tables.length === 0) {
     return (
       <EmptyTables
+        canManage={props.canManage}
         filter={props.filter}
         totalTableCount={props.totalTableCount}
       />
@@ -76,6 +81,7 @@ export function TableGrid(props: TableGridProps) {
     <section className="mt-7 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
       {props.tables.map((table) => (
         <TableCard
+          canManage={props.canManage}
           key={table.id}
           table={table}
           menuOpen={props.menuTableId === table.id}

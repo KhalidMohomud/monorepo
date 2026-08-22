@@ -23,14 +23,16 @@ export function RestaurantTableManager() {
               Manage dining area seating and status.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={tableState.openCreateForm}
-            className="flex h-12 items-center justify-center gap-2.5 self-start rounded-xl border border-[#d9cfc3] bg-white px-6 text-base font-bold text-[#302c27] shadow-sm transition hover:border-[#c7b7a2] hover:bg-[#fffdfa] sm:self-auto"
-          >
-            <Icon name="plus" className="size-5" />
-            Add Table
-          </button>
+          {tableState.canManage ? (
+            <button
+              type="button"
+              onClick={tableState.openCreateForm}
+              className="flex h-12 items-center justify-center gap-2.5 self-start rounded-xl border border-[#d9cfc3] bg-white px-6 text-base font-bold text-[#302c27] shadow-sm transition hover:border-[#c7b7a2] hover:bg-[#fffdfa] sm:self-auto"
+            >
+              <Icon name="plus" className="size-5" />
+              Add Table
+            </button>
+          ) : null}
         </div>
 
         <TableFilters
@@ -39,6 +41,7 @@ export function RestaurantTableManager() {
           tables={tableState.tables}
         />
         <TableGrid
+          canManage={tableState.canManage}
           filter={tableState.filter}
           loading={tableState.loading}
           menuTableId={tableState.menuTableId}
@@ -52,28 +55,32 @@ export function RestaurantTableManager() {
         />
       </div>
 
-      <TableFormDialog
-        editing={tableState.editingId !== null}
-        form={tableState.form}
-        onChange={tableState.setForm}
-        onClose={tableState.closeForm}
-        onSubmit={() => void tableState.saveTable()}
-        open={tableState.formOpen}
-        saving={tableState.saving}
-      />
+      {tableState.canManage ? (
+        <>
+          <TableFormDialog
+            editing={tableState.editingId !== null}
+            form={tableState.form}
+            onChange={tableState.setForm}
+            onClose={tableState.closeForm}
+            onSubmit={() => void tableState.saveTable()}
+            open={tableState.formOpen}
+            saving={tableState.saving}
+          />
 
-      <ConfirmDialog
-        title="Delete table?"
-        description={
-          tableState.deleteCandidate
-            ? `Table ${tableState.deleteCandidate.tableNumber} will be permanently removed. Tables with order history cannot be deleted.`
-            : "This table will be permanently removed."
-        }
-        loading={tableState.deleting}
-        onCancel={tableState.closeDeleteDialog}
-        onConfirm={() => void tableState.confirmDelete()}
-        open={tableState.deleteCandidate !== null}
-      />
+          <ConfirmDialog
+            title="Delete table?"
+            description={
+              tableState.deleteCandidate
+                ? `Table ${tableState.deleteCandidate.tableNumber} will be permanently removed. Tables with order history cannot be deleted.`
+                : "This table will be permanently removed."
+            }
+            loading={tableState.deleting}
+            onCancel={tableState.closeDeleteDialog}
+            onConfirm={() => void tableState.confirmDelete()}
+            open={tableState.deleteCandidate !== null}
+          />
+        </>
+      ) : null}
     </main>
   );
 }

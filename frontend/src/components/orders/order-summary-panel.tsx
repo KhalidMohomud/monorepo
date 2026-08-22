@@ -1,5 +1,6 @@
 import { Icon } from "@/components/icon";
-import type { Order, OrderStatus } from "@/lib/types";
+import { canApplyOrderStatus } from "@/lib/permissions";
+import type { Order, OrderStatus, Role } from "@/lib/types";
 import {
   cancellableOrderStatuses,
   formatCurrency,
@@ -11,6 +12,7 @@ type OrderSummaryPanelProps = {
   onAdvance: (status: OrderStatus) => void;
   onCancelOrder: () => void;
   order: Order;
+  role: Role | null;
   working: boolean;
 };
 
@@ -18,10 +20,15 @@ export function OrderSummaryPanel({
   onAdvance,
   onCancelOrder,
   order,
+  role,
   working,
 }: OrderSummaryPanelProps) {
   const nextStatus = nextOrderStatus[order.status];
-  const cancellable = cancellableOrderStatuses.includes(order.status);
+  const allowedNextStatus =
+    nextStatus && canApplyOrderStatus(role, nextStatus) ? nextStatus : null;
+  const cancellable =
+    cancellableOrderStatuses.includes(order.status) &&
+    canApplyOrderStatus(role, "CANCELLED");
 
   return (
     <aside>
@@ -39,11 +46,11 @@ export function OrderSummaryPanel({
         </div>
       </section>
 
-      {nextStatus ? (
+      {allowedNextStatus ? (
         <button
           type="button"
           disabled={working}
-          onClick={() => onAdvance(nextStatus)}
+          onClick={() => onAdvance(allowedNextStatus)}
           className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[#eda735] px-5 text-sm font-extrabold text-[#604619] shadow-sm hover:bg-[#df9928] disabled:opacity-50"
         >
           <span className="flex size-5 items-center justify-center rounded-full border-2 border-current">

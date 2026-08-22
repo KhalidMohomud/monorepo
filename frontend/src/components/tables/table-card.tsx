@@ -11,6 +11,7 @@ import {
 } from "./table-config";
 
 type TableCardProps = {
+  canManage: boolean;
   menuOpen: boolean;
   onDelete: (table: RestaurantTable) => void;
   onEdit: (table: RestaurantTable) => void;
@@ -21,6 +22,7 @@ type TableCardProps = {
 };
 
 export function TableCard({
+  canManage,
   menuOpen,
   onDelete,
   onEdit,
@@ -49,7 +51,7 @@ export function TableCard({
           >
             {TABLE_STATUS_LABELS[table.status]}
           </span>
-          <div className="relative">
+          {canManage ? <div className="relative">
             <button
               type="button"
               onClick={() => onToggleMenu(table.id)}
@@ -77,7 +79,7 @@ export function TableCard({
                 </button>
               </div>
             ) : null}
-          </div>
+          </div> : null}
         </div>
       </div>
 
@@ -95,7 +97,14 @@ export function TableCard({
       )}
 
       <div className="mt-auto pt-5">
-        {table.status === "CLEANING" ? (
+        {table.activeOrder ? (
+          <Link
+            href={`/orders?orderId=${table.activeOrder.id}`}
+            className="flex h-12 w-full items-center justify-center rounded-xl border border-[#ddd8d0] bg-white text-sm font-bold text-[#6c655d] transition hover:border-[#c9bca9] hover:bg-stone-50"
+          >
+            View Order
+          </Link>
+        ) : canManage && table.status === "CLEANING" ? (
           <button
             type="button"
             disabled={updating}
@@ -104,7 +113,7 @@ export function TableCard({
           >
             {updating ? "Updating…" : "Mark Available"}
           </button>
-        ) : table.status === "RESERVED" ? (
+        ) : canManage && table.status === "RESERVED" ? (
           <button
             type="button"
             onClick={() => onEdit(table)}
@@ -112,28 +121,17 @@ export function TableCard({
           >
             Change Status
           </button>
-        ) : table.status === "AVAILABLE" ? (
+        ) : canManage && table.status === "AVAILABLE" ? (
           <Link
             href={`/orders/new?tableId=${table.id}`}
             className="flex h-12 w-full items-center justify-center rounded-xl bg-[#efb24e] text-sm font-bold text-white transition hover:bg-[#e4a339]"
           >
             Start Order
           </Link>
-        ) : table.activeOrder ? (
-          <Link
-            href={`/orders?orderId=${table.activeOrder.id}`}
-            className="flex h-12 w-full items-center justify-center rounded-xl border border-[#ddd8d0] bg-white text-sm font-bold text-[#6c655d] transition hover:border-[#c9bca9] hover:bg-stone-50"
-          >
-            View Order
-          </Link>
         ) : (
-          <button
-            type="button"
-            disabled
-            className="h-12 w-full cursor-not-allowed rounded-xl border border-[#ddd8d0] bg-white text-sm font-bold text-[#9b9690]"
-          >
-            View Order
-          </button>
+          <div className="flex h-12 w-full items-center justify-center rounded-xl border border-[#e2ddd6] bg-[#faf8f5] text-sm font-bold text-[#8a837b]">
+            Read only
+          </div>
         )}
       </div>
     </article>

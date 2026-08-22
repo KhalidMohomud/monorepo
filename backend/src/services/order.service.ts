@@ -88,6 +88,13 @@ const menuItemUnavailable = () =>
     "One or more menu items are unavailable",
   );
 
+const orderHistoryForbidden = () =>
+  new AppError(
+    403,
+    "ORDER_HISTORY_FORBIDDEN",
+    "Order history is available to administrators only",
+  );
+
 const toOrderResponse = (order: OrderRecord) => ({
   ...order,
   subtotal: order.subtotal.toFixed(2),
@@ -155,7 +162,17 @@ const findAvailableMenuItems = async (
   return new Map(menuItems.map((menuItem) => [menuItem.id, menuItem]));
 };
 
-export const listOrders = async (query: OrderQuery) => {
+export const listOrders = async (query: OrderQuery, viewerRole: Role) => {
+  if (
+    viewerRole !== Role.ADMIN &&
+    (query.active === false ||
+      (query.status !== undefined && terminalStatuses.includes(query.status)))
+  ) {
+    throw orderHistoryForbidden();
+  }
+
+  // Operational users receive active orders even when no filter is supplied.
+  const effectiveActive = viewerRole === Role.ADMIN ? query.active : true;
   const dayStart = query.date
     ? new Date(`${query.date}T00:00:00.000Z`)
     : undefined;
@@ -163,9 +180,9 @@ export const listOrders = async (query: OrderQuery) => {
     ? new Date(dayStart.getTime() + 24 * 60 * 60 * 1_000)
     : undefined;
   const activeStatusFilter =
-    query.active === undefined
+    effectiveActive === undefined
       ? undefined
-      : query.active
+      : effectiveActive
         ? { notIn: terminalStatuses }
         : { in: terminalStatuses };
   const statusFilters: Prisma.OrderWhereInput[] = [];
@@ -190,7 +207,7 @@ export const listOrders = async (query: OrderQuery) => {
   return orders.map(toOrderResponse);
 };
 
-export const getOrderById = async (orderId: string) => {
+export const getOrderById = async (orderId: string, viewerRole?: Role) => {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: orderInclude,
@@ -198,6 +215,14 @@ export const getOrderById = async (orderId: string) => {
 
   if (!order) {
     throw orderNotFound();
+  }
+
+  if (
+    viewerRole !== undefined &&
+    viewerRole !== Role.ADMIN &&
+    terminalStatuses.includes(order.status)
+  ) {
+    throw orderHistoryForbidden();
   }
 
   return toOrderResponse(order);

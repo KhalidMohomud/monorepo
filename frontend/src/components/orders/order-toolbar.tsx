@@ -2,6 +2,7 @@ import { Icon } from "@/components/icon";
 import type { OrderView } from "./use-orders";
 
 type OrderToolbarProps = {
+  canViewHistory: boolean;
   onQueryChange: (query: string) => void;
   onViewChange: (view: OrderView) => void;
   query: string;
@@ -9,6 +10,7 @@ type OrderToolbarProps = {
 };
 
 export function OrderToolbar({
+  canViewHistory,
   onQueryChange,
   onViewChange,
   query,
@@ -16,22 +18,24 @@ export function OrderToolbar({
 }: OrderToolbarProps) {
   return (
     <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="inline-flex self-start rounded-xl border border-[#ded4c7] bg-white p-1">
-        {(["ACTIVE", "HISTORY"] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onViewChange(option)}
-            className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-              view === option
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:bg-stone-50"
-            }`}
-          >
-            {option === "ACTIVE" ? "Active Orders" : "Order History"}
-          </button>
-        ))}
-      </div>
+      {canViewHistory ? (
+        <div className="inline-flex self-start rounded-xl border border-[#ded4c7] bg-white p-1">
+          {(["ACTIVE", "HISTORY"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onViewChange(option)}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                view === option
+                  ? "bg-stone-900 text-white"
+                  : "text-stone-600 hover:bg-stone-50"
+              }`}
+            >
+              {option === "ACTIVE" ? "Active Orders" : "Order History"}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <label className="relative block w-full sm:max-w-sm">
         <span className="sr-only">Search orders</span>

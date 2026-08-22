@@ -1,6 +1,10 @@
 import type { UserAccount } from "@/lib/types";
 import { Icon } from "../icon";
-import type { UserFilter } from "./user-config";
+import {
+  USER_ROLE_LABELS,
+  USER_ROLE_STYLES,
+  type UserFilter,
+} from "./user-config";
 
 type UserTableProps = {
   currentUserId: string;
@@ -54,7 +58,7 @@ export function UserTable({
         </div>
         <h2 className="mt-4 text-lg font-bold text-stone-900">No users yet</h2>
         <p className="mt-1 text-sm text-stone-500">
-          Add a staff or administrator account to build your team.
+          Add a waiter, cashier, or administrator account to build your team.
         </p>
         <button
           type="button"
@@ -89,7 +93,8 @@ export function UserTable({
             >
               <option value="ALL">All roles</option>
               <option value="ADMIN">Admins</option>
-              <option value="STAFF">Staff</option>
+              <option value="WAITER">Waiters</option>
+              <option value="CASHIER">Cashiers</option>
             </select>
           </label>
           <label className="relative block w-full sm:w-72">
@@ -175,13 +180,9 @@ export function UserTable({
                     </td>
                     <td className="px-5 py-4">
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                          user.role === "ADMIN"
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "bg-emerald-50 text-emerald-700"
-                        }`}
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${USER_ROLE_STYLES[user.role]}`}
                       >
-                        {user.role === "ADMIN" ? "Admin" : "Staff"}
+                        {USER_ROLE_LABELS[user.role]}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-stone-500">

@@ -465,7 +465,7 @@ test("Day 3 order APIs", async (t) => {
 
   await t.test("locks completed orders and releases the table", async () => {
     const orderResponse = await request<{ order: Order }>(`/orders/${orderId}`, {
-      token: waiterToken,
+      token: adminToken,
     });
     const itemUpdate = await request<{ order: Order }>(
       `/orders/${orderId}/items/${soupOrderItemId}`,
@@ -499,13 +499,25 @@ test("Day 3 order APIs", async (t) => {
     const active = await request<{ orders: Order[] }>("/orders?active=true", {
       token: waiterToken,
     });
+    const cashierActive = await request<{ orders: Order[] }>(
+      "/orders?active=true",
+      { token: cashierToken },
+    );
+    const waiterHistory = await request<{ orders: Order[] }>(
+      "/orders?active=false",
+      { token: waiterToken },
+    );
+    const cashierHistory = await request<{ orders: Order[] }>(
+      "/orders?active=false",
+      { token: cashierToken },
+    );
     const conflicting = await request<{ orders: Order[] }>(
       "/orders?active=true&status=PAID",
       { token: waiterToken },
     );
     const date = new Date().toISOString().slice(0, 10);
     const today = await request<{ orders: Order[] }>(`/orders?date=${date}`, {
-      token: waiterToken,
+      token: adminToken,
     });
     const invalidDate = await request<{ orders: Order[] }>(
       "/orders?date=20-08-2026",
@@ -519,11 +531,34 @@ test("Day 3 order APIs", async (t) => {
     );
     assert.equal(active.status, 200);
     assert.deepEqual(active.body?.data?.orders, []);
-    assert.equal(conflicting.status, 200);
-    assert.deepEqual(conflicting.body?.data?.orders, []);
+    assert.equal(cashierActive.status, 200);
+    assert.deepEqual(cashierActive.body?.data?.orders, []);
+    assert.equal(waiterHistory.status, 403);
+    assert.equal(waiterHistory.body?.error?.code, "ORDER_HISTORY_FORBIDDEN");
+    assert.equal(cashierHistory.status, 403);
+    assert.equal(cashierHistory.body?.error?.code, "ORDER_HISTORY_FORBIDDEN");
+    assert.equal(conflicting.status, 403);
+    assert.equal(conflicting.body?.error?.code, "ORDER_HISTORY_FORBIDDEN");
     assert.equal(today.status, 200);
     assert.equal(today.body?.data?.orders.length, 1);
     assert.equal(invalidDate.status, 400);
+
+    const adminDetail = await request<{ order: Order }>(`/orders/${orderId}`, {
+      token: adminToken,
+    });
+    const waiterDetail = await request<{ order: Order }>(`/orders/${orderId}`, {
+      token: waiterToken,
+    });
+    const cashierDetail = await request<{ order: Order }>(
+      `/orders/${orderId}`,
+      { token: cashierToken },
+    );
+
+    assert.equal(adminDetail.status, 200);
+    assert.equal(waiterDetail.status, 403);
+    assert.equal(waiterDetail.body?.error?.code, "ORDER_HISTORY_FORBIDDEN");
+    assert.equal(cashierDetail.status, 403);
+    assert.equal(cashierDetail.body?.error?.code, "ORDER_HISTORY_FORBIDDEN");
   });
 
   await t.test("allows only Cashier or Admin to cancel orders", async () => {

@@ -4,10 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { getErrorMessage } from "@/lib/api";
-import type { Role } from "@/lib/types";
-
-const landingPageForRole = (role: Role) =>
-  role === "ADMIN" ? "/" : "/orders/new";
+import { landingPageForRole } from "@/lib/permissions";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -93,7 +90,7 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 autoComplete="email"
-                placeholder="staff@merhaba.test"
+                placeholder="waiter@merhaba.test"
                 className="h-14 w-full rounded-xl border border-stone-300 bg-white pl-12 pr-4 text-base font-normal text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#b87a19] focus:ring-4 focus:ring-amber-100"
               />
             </span>

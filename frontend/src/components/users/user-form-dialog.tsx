@@ -110,7 +110,7 @@ export function UserFormDialog({
               required
               maxLength={254}
               autoComplete="email"
-              placeholder="staff@merhaba.test"
+              placeholder="waiter@merhaba.test"
               className="mt-2 h-12 w-full rounded-xl border border-stone-300 px-4 outline-none transition placeholder:text-stone-400 focus:border-amber-600 focus:ring-3 focus:ring-amber-100"
             />
           </label>
@@ -125,7 +125,8 @@ export function UserFormDialog({
               disabled={editingSelf}
               className="mt-2 h-12 w-full rounded-xl border border-stone-300 bg-white px-4 outline-none transition focus:border-amber-600 focus:ring-3 focus:ring-amber-100 disabled:bg-stone-100 disabled:text-stone-500"
             >
-              <option value="STAFF">Staff — daily operations</option>
+              <option value="WAITER">Waiter — orders and tables</option>
+              <option value="CASHIER">Cashier — payment and cancellation</option>
               <option value="ADMIN">Admin — full management access</option>
             </select>
             {editingSelf ? (

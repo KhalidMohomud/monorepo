@@ -7,6 +7,7 @@ import type { MenuItem, Order } from "@/lib/types";
 import { editableOrderStatuses, formatCurrency } from "./order-config";
 
 type OrderItemsPanelProps = {
+  canEdit: boolean;
   menuItems: MenuItem[];
   onAddItem: (menuItemId: string) => void;
   onRemoveItem: (itemId: string) => void;
@@ -16,6 +17,7 @@ type OrderItemsPanelProps = {
 };
 
 export function OrderItemsPanel({
+  canEdit,
   menuItems,
   onAddItem,
   onRemoveItem,
@@ -24,7 +26,7 @@ export function OrderItemsPanel({
   working,
 }: OrderItemsPanelProps) {
   const [menuItemId, setMenuItemId] = useState("");
-  const editable = editableOrderStatuses.includes(order.status);
+  const editable = canEdit && editableOrderStatuses.includes(order.status);
   const addableItems = useMemo(() => {
     const existingIds = new Set(order.items.map((item) => item.menuItemId));
     return menuItems.filter((item) => !existingIds.has(item.id));

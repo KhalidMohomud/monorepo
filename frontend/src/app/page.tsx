@@ -1,9 +1,10 @@
 import { DashboardManager } from "@/components/dashboard-manager";
 import { ProtectedPage } from "@/components/protected-page";
+import { ADMIN_ONLY_ROLES } from "@/lib/permissions";
 
 export default function Home() {
   return (
-    <ProtectedPage>
+    <ProtectedPage allowedRoles={ADMIN_ONLY_ROLES}>
       <DashboardManager />
     </ProtectedPage>
   );

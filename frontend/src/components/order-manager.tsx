@@ -25,6 +25,7 @@ export function OrderManager() {
       {orderState.selectedOrder ? (
         <OrderDetailView
           menuItems={orderState.menuItems}
+          canEditItems={orderState.canEditItems}
           onAddItem={(menuItemId) => void orderState.addItem(menuItemId)}
           onAdvance={(status) => void orderState.updateStatus(status)}
           onBack={orderState.closeOrder}
@@ -34,6 +35,7 @@ export function OrderManager() {
             void orderState.updateItemQuantity(itemId, quantity)
           }
           order={orderState.selectedOrder}
+          role={orderState.userRole}
           working={orderState.working}
         />
       ) : (
@@ -47,19 +49,24 @@ export function OrderManager() {
                 Orders
               </h1>
               <p className="mt-1.5 text-sm leading-6 text-stone-600">
-                Manage active orders and review completed order history.
+                {orderState.canViewHistory
+                  ? "Manage active orders and review completed order history."
+                  : "Manage the restaurant's active orders."}
               </p>
             </div>
-            <Link
-              href="/orders/new"
-              className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-lg bg-[#eda735] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#d99729] sm:self-auto"
-            >
-              <Icon name="plus" className="size-4" />
-              New Order
-            </Link>
+            {orderState.canCreateOrder ? (
+              <Link
+                href="/orders/new"
+                className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-lg bg-[#eda735] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#d99729] sm:self-auto"
+              >
+                <Icon name="plus" className="size-4" />
+                New Order
+              </Link>
+            ) : null}
           </div>
 
           <OrderToolbar
+            canViewHistory={orderState.canViewHistory}
             onQueryChange={orderState.setQuery}
             onViewChange={orderState.setView}
             query={orderState.query}

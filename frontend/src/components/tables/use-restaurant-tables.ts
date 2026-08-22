@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useToast } from "@/components/toast-provider";
 import { getErrorMessage } from "@/lib/api";
 import { restaurantTableApi } from "@/lib/domain-api";
+import { canManageTables } from "@/lib/permissions";
 import type { RestaurantTable, TableStatus } from "@/lib/types";
 import {
   EMPTY_TABLE_FORM,
@@ -16,7 +17,7 @@ import {
 
 // Keeps table API orchestration separate from the page's visual composition.
 export function useRestaurantTables() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const toast = useToast();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [filter, setFilter] = useState<TableFilter>("ALL");
@@ -30,6 +31,7 @@ export function useRestaurantTables() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const canManage = canManageTables(user?.role);
 
   const loadTables = useCallback(async () => {
     if (!token) {
@@ -78,11 +80,13 @@ export function useRestaurantTables() {
   };
 
   const openCreateForm = () => {
+    if (!canManage) return;
     resetForm();
     setFormOpen(true);
   };
 
   const startEditing = (table: RestaurantTable) => {
+    if (!canManage) return;
     setMenuTableId(null);
     setEditingId(table.id);
     setForm({
@@ -94,7 +98,7 @@ export function useRestaurantTables() {
   };
 
   const saveTable = async () => {
-    if (!token) {
+    if (!token || !canManage) {
       return;
     }
 
@@ -133,7 +137,7 @@ export function useRestaurantTables() {
   };
 
   const changeStatus = async (table: RestaurantTable, status: TableStatus) => {
-    if (!token) {
+    if (!token || !canManage) {
       return;
     }
 
@@ -154,12 +158,13 @@ export function useRestaurantTables() {
   };
 
   const requestDelete = (table: RestaurantTable) => {
+    if (!canManage) return;
     setMenuTableId(null);
     setDeleteCandidate(table);
   };
 
   const confirmDelete = async () => {
-    if (!token || !deleteCandidate) {
+    if (!token || !deleteCandidate || !canManage) {
       return;
     }
 
@@ -191,6 +196,7 @@ export function useRestaurantTables() {
   };
 
   return {
+    canManage,
     closeForm,
     closeDeleteDialog,
     confirmDelete,

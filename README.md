@@ -405,8 +405,8 @@ After login:
 
 - Admin users are sent to the dashboard.
 - Waiter users are sent to the create-order screen.
-- Cashier-specific frontend routing and controls are pending; the backend role
-  boundary is complete and enforced independently of the UI.
+- Cashier users are sent to the orders screen, where they can complete payment
+  or cancellation actions permitted by the API.
 
 Passwords are hashed with bcryptjs and are never returned by an API response.
 Invalid login attempts use the same generic response for unknown emails and
@@ -422,7 +422,8 @@ incorrect passwords.
 | View available menu items | Yes | Yes | Yes |
 | View restaurant tables | Yes | Yes | Yes |
 | Manage restaurant tables and statuses | Yes | Yes | No |
-| View orders | Yes | Yes | Yes |
+| View active orders | Yes | Yes | Yes |
+| View completed order history | Yes | No | No |
 | Create orders and edit order items | Yes | Yes | No |
 | Move orders to `PREPARING`, `READY`, or `SERVED` | Yes | Yes | No |
 | Mark orders `PAID` or `CANCELLED` | Yes | No | Yes |
@@ -484,8 +485,9 @@ Supported table statuses are `AVAILABLE`, `OCCUPIED`, `RESERVED`, and
 
 ### Orders
 
-Admin, Waiter, and Cashier can list and view orders. Only Admin and Waiter can
-create orders or change order items:
+Admin, Waiter, and Cashier can list and view active orders. Completed order
+history is restricted to Admin. Only Admin and Waiter can create orders or
+change order items:
 
 ```text
 GET    /api/V1/orders
@@ -498,8 +500,9 @@ PATCH  /api/V1/orders/:id/status
 ```
 
 Order listing supports optional `status`, `active`, and UTC `date` query
-filters. The frontend exposes active orders, completed history, and local order
-search.
+filters. Waiter and Cashier requests are constrained to active orders by the
+API; explicit history or terminal-status queries return `403`. The frontend
+shows completed history only to Admin and provides local order search.
 
 The normal status flow is:
 
@@ -551,11 +554,11 @@ cannot be deleted.
 | Route | Screen | Access |
 | --- | --- | --- |
 | `/login` | Sign in | Public |
-| `/` | Restaurant dashboard | Authenticated |
-| `/orders` | Active orders, history, and order details | Admin and Waiter; Cashier UI update pending |
+| `/` | Restaurant dashboard | Admin |
+| `/orders` | Active orders and role-appropriate actions; history for Admin | Admin, Waiter, and Cashier |
 | `/orders/new` | Create an order | Admin and Waiter |
-| `/tables` | Table management | Admin and Waiter; Cashier read-only UI pending |
-| `/menu-items` | Menu management/browsing | Admin and Waiter; Cashier browsing UI pending |
+| `/tables` | Table management or read-only floor view | Admin and Waiter manage; Cashier reads |
+| `/menu-items` | Menu management or available-item browsing | Admin manages; Waiter and Cashier read |
 | `/categories` | Category management | Admin |
 | `/users` | User management | Admin |
 
@@ -652,9 +655,6 @@ npm run build
   records are not retained as archived rows.
 - Reservation behavior is represented only by table status; scheduling and guest
   details are outside scope.
-- Cashier authorization is complete in the backend, but Cashier-specific
-  frontend routing, navigation, and payment/cancellation controls are not yet
-  implemented.
 - The current total equals the subtotal. Taxes, discounts, service charges, and
   payment gateway integration are outside scope.
 
@@ -669,7 +669,7 @@ For a clean local review:
 4. Run all backend and frontend quality checks.
 5. Confirm the local setup instructions on a clean checkout.
 6. Open the deployed frontend or run both applications locally, then verify the
-   Admin and Waiter workflows and the backend Cashier authorization rules.
+   Admin, Waiter, and Cashier workflows and their authorization boundaries.
 
 ## License
 

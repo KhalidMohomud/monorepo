@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useToast } from "@/components/toast-provider";
 import { getErrorMessage } from "@/lib/api";
 import { menuItemApi, orderApi, restaurantTableApi } from "@/lib/domain-api";
+import { canCreateOrders } from "@/lib/permissions";
 import type { MenuItem, RestaurantTable } from "@/lib/types";
 
 export type DraftOrderItem = {
@@ -16,7 +17,7 @@ export type DraftOrderItem = {
 
 export function useCreateOrder() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const toast = useToast();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -131,7 +132,14 @@ export function useCreateOrder() {
   const itemCount = draftItems.reduce((total, item) => total + item.quantity, 0);
 
   const createOrder = async () => {
-    if (!token || !selectedTableId || draftItems.length === 0) return;
+    if (
+      !token ||
+      !canCreateOrders(user?.role) ||
+      !selectedTableId ||
+      draftItems.length === 0
+    ) {
+      return;
+    }
 
     setSaving(true);
     try {

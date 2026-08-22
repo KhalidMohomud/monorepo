@@ -36,8 +36,9 @@ const authenticatedUser = (
 
 export const list: RequestHandler = async (req, res, next) => {
   try {
+    const user = authenticatedUser(req.user);
     const query = orderQuerySchema.parse(req.query);
-    const orders = await listOrders(query);
+    const orders = await listOrders(query, user.role);
     res.status(200).json({ data: { orders } });
   } catch (error) {
     next(error);
@@ -46,8 +47,9 @@ export const list: RequestHandler = async (req, res, next) => {
 
 export const getById: RequestHandler = async (req, res, next) => {
   try {
+    const user = authenticatedUser(req.user);
     const { id } = idParamSchema.parse(req.params);
-    const order = await getOrderById(id);
+    const order = await getOrderById(id, user.role);
     res.status(200).json({ data: { order } });
   } catch (error) {
     next(error);
