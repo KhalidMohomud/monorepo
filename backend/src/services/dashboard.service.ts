@@ -21,6 +21,12 @@ const getUtcDayRange = (date: Date) => {
 
 export const getDashboardOverview = async () => {
   const { start, end } = getUtcDayRange(new Date());
+  const activeStatusGroupsQuery = prisma.order.groupBy({
+    by: ["status"],
+    where: { status: { in: [...activeOrderStatuses] } },
+    orderBy: { status: "asc" },
+    _count: true,
+  });
   const [
     occupiedTables,
     totalTables,
@@ -33,11 +39,7 @@ export const getDashboardOverview = async () => {
       where: { status: TableStatus.OCCUPIED },
     }),
     prisma.restaurantTable.count(),
-    prisma.order.groupBy({
-      by: ["status"],
-      where: { status: { in: [...activeOrderStatuses] } },
-      _count: { _all: true },
-    }),
+    activeStatusGroupsQuery,
     prisma.order.count({
       where: { createdAt: { gte: start, lt: end } },
     }),
@@ -76,7 +78,7 @@ export const getDashboardOverview = async () => {
     if (group.status in activeOrdersByStatus) {
       activeOrdersByStatus[
         group.status as keyof typeof activeOrdersByStatus
-      ] = group._count._all;
+      ] = group._count;
     }
   }
 

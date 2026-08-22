@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit && tsc --project tsconfig.seed.json",
     "test": "node tests/run-database-tests.mjs tests/auth.integration.test.ts tests/day2.integration.test.ts tests/day3.integration.test.ts tests/dashboard.integration.test.ts tests/user-management.integration.test.ts",
@@ -50,7 +50,7 @@
     "@types/pg": "^8.23.1",
     "prisma": "^7.9.1",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.19.0"
