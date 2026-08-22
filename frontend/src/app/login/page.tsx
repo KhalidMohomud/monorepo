@@ -33,7 +33,7 @@ export default function LoginPage() {
       const authenticatedUser = await login(email, password);
       router.replace(landingPageForRole(authenticatedUser.role));
     } catch (loginError) {
-      setError(getErrorMessage(loginError));
+      setError(getErrorMessage(loginError) ?? "Unable to sign in");
     } finally {
       setSubmitting(false);
     }

@@ -23,7 +23,7 @@ type Toast = {
 type ToastInput = Omit<Toast, "id">;
 
 type ToastContextValue = {
-  error: (message: string, title?: string) => void;
+  error: (message: string | null, title?: string) => void;
   info: (message: string, title?: string) => void;
   success: (message: string, title?: string) => void;
 };
@@ -59,8 +59,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     () => ({
       success: (message, title = "Success") =>
         show({ message, title, tone: "success" }),
-      error: (message, title = "Action failed") =>
-        show({ message, title, tone: "error" }),
+      error: (message, title = "Action failed") => {
+        if (message) {
+          show({ message, title, tone: "error" });
+        }
+      },
       info: (message, title = "Notice") =>
         show({ message, title, tone: "info" }),
     }),

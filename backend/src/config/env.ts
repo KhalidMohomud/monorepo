@@ -2,6 +2,12 @@ import "dotenv/config";
 
 import { z } from "zod";
 
+const optionalCredentialSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().trim().min(1).optional(),
+);
+
 const envSchema = z
   .object({
     NODE_ENV: z
@@ -30,26 +36,9 @@ const envSchema = z
       .min(60)
       .max(86_400)
       .default(900),
-    CLOUDINARY_NAME: z.string().trim().min(1).optional(),
-    CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
-    CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
-  })
-  .superRefine((value, context) => {
-    if (value.NODE_ENV === "test") return;
-
-    for (const key of [
-      "CLOUDINARY_NAME",
-      "CLOUDINARY_API_KEY",
-      "CLOUDINARY_API_SECRET",
-    ] as const) {
-      if (!value[key]) {
-        context.addIssue({
-          code: "custom",
-          path: [key],
-          message: `${key} is required`,
-        });
-      }
-    }
+    CLOUDINARY_NAME: optionalCredentialSchema,
+    CLOUDINARY_API_KEY: optionalCredentialSchema,
+    CLOUDINARY_API_SECRET: optionalCredentialSchema,
   });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -1,10 +1,21 @@
 import type { UploadApiResponse } from "cloudinary";
 
-import { cloudinary } from "../config/cloudinary.js";
+import {
+  cloudinary,
+  isCloudinaryConfigured,
+} from "../config/cloudinary.js";
 import { AppError } from "../utils/app-error.js";
 
-export const uploadMenuImage = (buffer: Buffer): Promise<string> =>
-  new Promise((resolve, reject) => {
+export const uploadMenuImage = async (buffer: Buffer): Promise<string> => {
+  if (!isCloudinaryConfigured) {
+    throw new AppError(
+      503,
+      "IMAGE_UPLOAD_NOT_CONFIGURED",
+      "Menu image upload is not configured",
+    );
+  }
+
+  return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         allowed_formats: ["jpg", "jpeg", "png", "webp"],
@@ -29,3 +40,4 @@ export const uploadMenuImage = (buffer: Buffer): Promise<string> =>
 
     uploadStream.end(buffer);
   });
+};

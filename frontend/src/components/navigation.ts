@@ -11,7 +11,7 @@ export type NavigationItem = {
 export const primaryNavigation: NavigationItem[] = [
   { href: "/", icon: "grid", label: "Dashboard", adminOnly: true, },
   { href: "/orders", icon: "receipt", label: "Orders" },
-  { href: "/tables", icon: "table", label: "Tables", adminOnly: true, },
+  { href: "/tables", icon: "table", label: "Tables", },
   { href: "/menu-items", icon: "utensils", label: "Menu" },
   {
     href: "/categories",

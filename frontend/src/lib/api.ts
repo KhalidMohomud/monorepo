@@ -2,6 +2,8 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"
 ).replace(/\/$/, "");
 
+export const SESSION_EXPIRED_EVENT = "merhaba:session-expired";
+
 type ErrorResponse = {
   error?: {
     code?: string;
@@ -24,6 +26,13 @@ export class ApiClientError extends Error {
   ) {
     super(message);
     this.name = "ApiClientError";
+  }
+}
+
+export class SessionExpiredError extends ApiClientError {
+  constructor(code: string, message: string) {
+    super(401, code, message);
+    this.name = "SessionExpiredError";
   }
 }
 
@@ -59,17 +68,34 @@ export const apiRequest = async <T>(
   const responseBody = (await response.json()) as T & ErrorResponse;
 
   if (!response.ok) {
+    const code = responseBody.error?.code ?? "REQUEST_FAILED";
+    const message =
+      responseBody.error?.details?.[0]?.message ??
+      responseBody.error?.message ??
+      "Request failed";
+
+    if (response.status === 401 && options.token) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      }
+
+      throw new SessionExpiredError(code, message);
+    }
+
     throw new ApiClientError(
       response.status,
-      responseBody.error?.code ?? "REQUEST_FAILED",
-      responseBody.error?.details?.[0]?.message ??
-        responseBody.error?.message ??
-        "Request failed",
+      code,
+      message,
     );
   }
 
   return responseBody;
 };
 
-export const getErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Something went wrong";
+export const getErrorMessage = (error: unknown): string | null => {
+  if (error instanceof SessionExpiredError) {
+    return null;
+  }
+
+  return error instanceof Error ? error.message : "Something went wrong";
+};

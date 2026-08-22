@@ -7,6 +7,9 @@ import { Client } from "pg";
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-only-secret-that-is-at-least-32-characters";
 process.env.FRONTEND_URL = "http://localhost:3000";
+process.env.CLOUDINARY_NAME = "";
+process.env.CLOUDINARY_API_KEY = "";
+process.env.CLOUDINARY_API_SECRET = "";
 
 assert(
   process.env.DATABASE_URL,
@@ -224,10 +227,34 @@ test("Day 2 domain APIs", async (t) => {
       },
     );
 
+    const imageForm = new FormData();
+    imageForm.append(
+      "image",
+      new Blob(["image bytes"], { type: "image/png" }),
+      "menu.png",
+    );
+    const unconfiguredResponse = await fetch(
+      `${baseUrl}/menu-items/images`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${adminToken}` },
+        body: imageForm,
+      },
+    );
+    const unconfiguredBody =
+      (await unconfiguredResponse.json()) as ApiResponse<{
+        imageUrl: string;
+      }>;
+
     assert.equal(staffResponse.status, 403);
     assert.equal(emptyAdminResponse.status, 400);
     assert.equal(emptyAdminBody.error?.code, "IMAGE_REQUIRED");
     assert.equal(invalidImageResponse.status, 415);
+    assert.equal(unconfiguredResponse.status, 503);
+    assert.equal(
+      unconfiguredBody.error?.code,
+      "IMAGE_UPLOAD_NOT_CONFIGURED",
+    );
   });
 
   await t.test("creates available and unavailable menu items", async () => {

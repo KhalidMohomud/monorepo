@@ -1,117 +1,141 @@
 # Merhaba Order Desk
 
-## Project Overview
+Merhaba Order Desk is a full-stack restaurant operations MVP for managing menu
+categories, menu items, dining tables, users, and customer orders from one
+role-aware interface.
 
-Merhaba Order Desk is a Restaurant Operations MVP intended to help restaurant
-staff manage menus, tables, and customer orders. The repository currently
-contains the Day 1 security and database foundation, the Day 2 category,
-menu-item, and table workflows, the Day 3 order-management backend, and the
-Day 4 dashboard overview and administrator user-management backends.
+The project was built as a five-day Full-Stack Developer technical assessment.
+Its focus is a coherent working core, clear authorization boundaries, reliable
+database behavior, and code that is straightforward to explain and maintain.
 
 ## Current Status
 
-Day 1 and Day 2 are complete. The Day 3 backend is complete. Authentication, role-based authorization, request
-validation, centralized error handling, Prisma configuration, the initial
-PostgreSQL migration, and integration tests are in place. Administrators can
-manage categories and menu items. Administrators and staff can manage restaurant
-tables, while staff receive only available menu items.
+The core assessment workflows are implemented across the API and frontend,
+with remaining trade-offs recorded in [Known Limitations](#known-limitations):
 
-The frontend includes login and role-aware screens for the Day 2 workflows. The
-backend supports order creation, line-item changes, totals, status transitions,
-history filters, active-order table assignment, dashboard overview metrics, and
-administrator-managed user accounts. The order, dashboard, and user-management
-interfaces, payments, and reporting are not implemented yet.
+- secure email/password authentication with `ADMIN` and `STAFF` roles;
+- category and menu-item management;
+- restaurant table management and status changes;
+- order creation, line-item changes, totals, status transitions, and history;
+- an operational dashboard with table, order, and revenue summaries;
+- administrator-managed user accounts;
+- idempotent demo data seeding; and
+- responsive, role-aware frontend screens with loading, error, confirmation,
+  and success feedback.
+
+The optional reporting page, real-time updates, payment processing, inventory,
+and advanced reservation workflows are not part of the implemented MVP.
 
 ## Tech Stack
 
 ### Frontend
 
-- Next.js 16 with the App Router
+- Next.js 16 using the App Router
 - React 19
 - TypeScript
 - Tailwind CSS 4
-- ESLint
+- ESLint with the Next.js configuration
 
 ### Backend
 
-- Express 5 and TypeScript
+- Node.js and Express 5
+- TypeScript
 - PostgreSQL
 - Prisma 7 with the PostgreSQL driver adapter
-- Zod for environment and request validation
-- JSON Web Tokens for stateless access tokens
+- Zod for request and environment validation
+- JSON Web Tokens for access-token authentication
 - bcryptjs for password hashing
 - Helmet for HTTP security headers
-- CORS configured from `FRONTEND_URL`
+- CORS with an explicitly configured frontend origin
+- Multer and Cloudinary for optional menu-item image uploads
+
+### Testing
+
+- Node.js test runner
+- PGlite's PostgreSQL-compatible socket server for isolated backend integration
+  tests
 
 ## Architecture
 
-The frontend and backend are separate applications with independent dependency
-trees and commands. There is no root npm workspace.
+The frontend and backend are independent applications. Each has its own
+dependencies, scripts, environment configuration, and build output.
 
 ```text
 Next.js frontend
-        │
-        │ REST JSON
-        ▼
+       |
+       | REST JSON + Bearer JWT
+       v
 Express API
-        │
-        │ Prisma
-        ▼
+       |
+       | Prisma
+       v
 PostgreSQL
 ```
 
-The backend follows a small route → controller → service → Prisma flow.
-Authentication and authorization are implemented as reusable Express
-middleware. See [DECISIONS.md](./DECISIONS.md) for the main technical choices.
+Backend requests follow a small, consistent flow:
+
+```text
+route -> authentication/authorization -> controller -> service -> Prisma
+```
+
+- Routes define endpoints and role requirements.
+- Controllers parse Zod schemas and format HTTP responses.
+- Services contain domain and database logic.
+- Prisma provides typed persistence and transactions.
+- Central middleware converts known failures into consistent API errors.
+
+Important architectural choices are documented in
+[DECISIONS.md](./DECISIONS.md).
 
 ## Repository Structure
 
 ```text
 merhaba-order-desk/
-├── backend/
-│   ├── prisma/
-│   │   ├── migrations/
-│   │   ├── schema.prisma
-│   │   └── seed.ts
-│   ├── src/
-│   │   ├── config/
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── types/
-│   │   ├── utils/
-│   │   ├── validators/
-│   │   ├── app.ts
-│   │   └── server.ts
-│   ├── tests/
-│   ├── .env.example
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   ├── components/
-│   │   └── lib/
-│   ├── .env.example
-│   └── package.json
-├── .gitignore
-├── DECISIONS.md
-└── README.md
+|-- backend/
+|   |-- prisma/
+|   |   |-- migrations/
+|   |   |-- schema.prisma
+|   |   `-- seed.ts
+|   |-- src/
+|   |   |-- config/
+|   |   |-- controllers/
+|   |   |-- middleware/
+|   |   |-- routes/
+|   |   |-- services/
+|   |   |-- types/
+|   |   |-- utils/
+|   |   |-- validators/
+|   |   |-- app.ts
+|   |   `-- server.ts
+|   |-- tests/
+|   |-- .env.example
+|   `-- package.json
+|-- frontend/
+|   |-- src/
+|   |   |-- app/
+|   |   |-- components/
+|   |   `-- lib/
+|   |-- .env.example
+|   `-- package.json
+|-- .gitignore
+|-- DECISIONS.md
+`-- README.md
 ```
 
-Generated files, build output, dependencies, and local environment files are
+Generated clients, dependencies, build output, and local environment files are
 excluded from version control.
 
 ## Prerequisites
 
 - Node.js 20.19 or newer
 - npm
-- A PostgreSQL database
+- PostgreSQL
+- A Cloudinary account only if menu-image upload will be used
 
 ## Installation
 
-Dependencies are installed separately because the repository does not use a
-root workspace:
+This repository intentionally does not use a root npm workspace. Install each
+application independently:
 
 ```bash
 cd frontend
@@ -121,235 +145,387 @@ cd ../backend
 npm install
 ```
 
-## Environment Variables
+## Environment Configuration
 
-Create the backend environment file from the committed template:
+### Backend
+
+Create the local backend environment file:
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-| Variable | Required | Default | Purpose |
+Configure these variables in `backend/.env`:
+
+| Variable | Required | Example/default | Purpose |
 | --- | --- | --- | --- |
 | `NODE_ENV` | No | `development` | Runtime mode: `development`, `test`, or `production`. |
-| `PORT` | No | `4000` | Express HTTP port. |
-| `FRONTEND_URL` | No | `http://localhost:3000` | Browser origin allowed by CORS. Use the deployed frontend URL in production. |
-| `DATABASE_URL` | Yes | None | PostgreSQL connection URL used by Prisma. |
-| `JWT_SECRET` | Yes | None | Access-token signing secret; must be at least 32 characters. |
-| `JWT_EXPIRES_IN_SECONDS` | No | `900` | Access-token lifetime, constrained to 60–86,400 seconds. |
+| `PORT` | No | `4000` | Express server port. |
+| `FRONTEND_URL` | No | `http://localhost:3000` | The single browser origin allowed by CORS. |
+| `DATABASE_URL` | Yes | PostgreSQL URL | Prisma database connection. |
+| `JWT_SECRET` | Yes | No default | JWT signing secret with at least 32 characters. |
+| `JWT_EXPIRES_IN_SECONDS` | No | `900` | Access-token lifetime between 60 and 86,400 seconds. |
+| `CLOUDINARY_NAME` | No | None | Cloudinary cloud name for menu-image upload. |
+| `CLOUDINARY_API_KEY` | No | None | Cloudinary API key for menu-image upload. |
+| `CLOUDINARY_API_SECRET` | No | None | Cloudinary API secret for menu-image upload. |
 
-Never commit `backend/.env` or real credentials. The application exits during
-startup if required configuration is missing or invalid.
+Cloudinary is optional. The core API starts normally when its credentials are
+absent. Image-upload requests return `503 IMAGE_UPLOAD_NOT_CONFIGURED` unless
+all three Cloudinary values are configured. Keep those values exclusively in
+the untracked `backend/.env` file or a deployment secret manager.
 
-The frontend defaults to `http://localhost:4000/api`. To override it, create
-`frontend/.env.local` from `frontend/.env.example` and set
-`NEXT_PUBLIC_API_URL` to the public API base URL. Variables prefixed with
-`NEXT_PUBLIC_` are included in the browser bundle and must never contain secrets.
+Generate a strong JWT secret locally, for example:
+
+```bash
+openssl rand -base64 48
+```
+
+Never commit the generated value, database credentials, Cloudinary credentials,
+or demo passwords.
+
+### Frontend
+
+Create the optional frontend environment file:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:4000/api` | Public base URL of the Express API. |
+
+Variables prefixed with `NEXT_PUBLIC_` are included in the browser bundle and
+must never contain secrets.
 
 ## Database Setup
 
-Run Prisma commands from the backend package:
+Create the PostgreSQL database referenced by `DATABASE_URL`, then run all Prisma
+commands from the backend directory:
 
 ```bash
 cd backend
 
-# Generate the Prisma Client
 npm run prisma:generate
-
-# Validate the schema
 npm run prisma:validate
-
-# Apply/create migrations during local development
 npm run prisma:migrate:dev
 ```
 
-For a deployed environment with committed migrations, use:
+For a deployed environment, apply the committed migrations without creating a
+new migration:
 
 ```bash
 cd backend
 npm run prisma:migrate:deploy
 ```
 
-Seed the reviewer/demo accounts and small Day 2 dataset interactively:
+The schema contains these main entities:
+
+- `User`
+- `Category`
+- `MenuItem`
+- `RestaurantTable`
+- `Order`
+- `OrderItem`
+
+Order items store `itemName` and `unitPrice` snapshots. Historical orders
+therefore remain accurate when a menu item's name or price changes later.
+Money is stored with PostgreSQL decimal columns, and the API returns monetary
+values as decimal strings.
+
+## Seed Data and Demo Accounts
+
+Run the idempotent seed script after applying migrations:
 
 ```bash
 cd backend
 npm run db:seed
 ```
 
-The terminal masks and confirms each password. For non-interactive automation,
-inject `SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD` through the process
-environment or a secret manager. Do not commit either value.
+In an interactive terminal, the script securely prompts for and confirms both
+demo passwords without displaying them. The plaintext passwords are never
+stored in source code or written to the database.
 
-## Running the Backend
+For non-interactive CI or demo automation, provide
+`SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD` through the process environment
+or a secret manager. Do not add them to a committed file or expose them in logs.
 
-Development server at `http://localhost:4000`:
+The seed can be run repeatedly without creating duplicate records. It creates
+or updates:
 
-```bash
-cd backend
-npm run dev
-```
+- one Admin account;
+- one Staff account;
+- four menu categories;
+- seven menu items; and
+- six restaurant tables.
 
-Production-style local build and start:
-
-```bash
-cd backend
-npm run build
-npm start
-```
-
-Health check: `GET http://localhost:4000/api/health`
-
-## Running the Frontend
-
-Development server at `http://localhost:3000`:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Production-style local build and start:
-
-```bash
-cd frontend
-npm run build
-npm start
-```
-
-## Authentication
-
-The currently implemented routes are:
-
-| Method | Route | Authentication | Description |
+| Account | Email | Role | Password |
 | --- | --- | --- | --- |
-| `POST` | `/api/V1/auth/register` | Public | Creates a `STAFF` account after Zod validation. |
-| `POST` | `/api/V1/auth/login` | Public | Returns a JWT access token and safe user details. |
-| `GET` | `/api/auth/me` | Bearer token | Returns the authenticated user's ID, name, email, and role. |
+| Admin | `admin@merhaba.test` | `ADMIN` | The Admin password selected during seeding |
+| Staff | `staff@merhaba.test` | `STAFF` | The Staff password selected during seeding |
 
-Protected requests use this header:
+## Running Locally
+
+Start the backend in one terminal:
+
+```bash
+cd backend
+npm run dev
+```
+
+The API listens at `http://localhost:4000` by default. Verify it with:
+
+```bash
+curl http://localhost:4000/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+Start the frontend in a second terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:3000` and sign in using one of the accounts created by
+the seed script.
+
+For production-style local execution:
+
+```bash
+cd backend
+npm run build
+npm start
+```
+
+```bash
+cd frontend
+npm run build
+npm start
+```
+
+## Authentication and Authorization
+
+Authentication uses short-lived signed JWT access tokens. Protected requests
+send the token using:
 
 ```http
 Authorization: Bearer <access-token>
 ```
 
-Two roles exist:
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/V1/auth/register` | Public | Register a `STAFF` account. |
+| `POST` | `/api/V1/auth/login` | Public | Authenticate and receive a JWT. |
+| `GET` | `/api/auth/me` | Authenticated | Load the current safe user profile. |
 
-- `ADMIN` — manages categories and menu items and can access operational order
-  and table routes. Administrators can also create and manage staff or other
-  administrator accounts through the protected user API.
-- `STAFF` — intended for daily restaurant operations. Public registration is
-  deliberately restricted to this role and cannot create an administrator.
+Public registration always assigns `STAFF`; the request cannot choose an Admin
+role. Only an authenticated Admin can create or promote another Admin through
+the user-management API.
 
-## Demo Credentials
+After login:
 
-After `npm run db:seed`, these accounts exist:
+- Admin users are sent to the dashboard.
+- Staff users are sent to the create-order screen.
 
-| Email | Role | Password |
-| --- | --- | --- |
-| `admin@merhaba.test` | `ADMIN` | Chosen securely during seeding |
-| `staff@merhaba.test` | `STAFF` | Chosen securely during seeding |
+Passwords are hashed with bcryptjs and are never returned by an API response.
+Invalid login attempts use the same generic response for unknown emails and
+incorrect passwords.
 
-No plaintext demo password is stored in the repository. The seed is idempotent,
-and rerunning it updates the account names, roles, password hashes, categories,
-menu items, and table definitions without creating duplicates.
+### Role Permissions
 
-## Day 2 API
+| Capability | Admin | Staff |
+| --- | :---: | :---: |
+| Dashboard overview | Yes | Yes |
+| Manage categories | Yes | No |
+| Create, update, and delete menu items | Yes | No |
+| View available menu items | Yes | Yes |
+| Manage restaurant tables and statuses | Yes | Yes |
+| Create and manage orders | Yes | Yes |
+| Manage user accounts and roles | Yes | No |
 
-All routes below require a bearer token.
+The backend is the final authorization boundary. Hiding a frontend control is a
+usability decision and is never treated as sufficient security.
 
-| Resource | Routes | Access |
-| --- | --- | --- |
-| Categories | `GET/POST /api/V1/categories`, `GET/PATCH/DELETE /api/V1/categories/:id` | `ADMIN` |
-| Menu items | `GET /api/V1/menu-items`, `GET /api/V1/menu-items/:id` | `ADMIN`, `STAFF` |
-| Menu items | `POST /api/V1/menu-items`, `PATCH/DELETE /api/V1/menu-items/:id` | `ADMIN` |
-| Tables | `GET/POST /api/V1/tables`, `GET/PATCH/DELETE /api/V1/tables/:id` | `ADMIN`, `STAFF` |
-| Table status | `PATCH /api/V1/tables/:id/status` | `ADMIN`, `STAFF` |
+## API Overview
 
-For staff callers, menu-item reads are restricted on the server to available
-items. Monetary values are returned as decimal strings so the JSON boundary
-does not introduce floating-point rounding.
+All endpoints except health, register, and login require a valid bearer token.
 
-## Day 3 Order API
+### Categories
 
-Order routes require an `ADMIN` or `STAFF` bearer token.
+Admin only:
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| `POST` | `/api/V1/orders` | Create an order for a table with initial items. |
-| `GET` | `/api/V1/orders` | List orders; supports `status`, `active`, and UTC `date` filters. |
-| `GET` | `/api/V1/orders/:id` | Get an order with table, creator, and item snapshots. |
-| `POST` | `/api/V1/orders/:id/items` | Add an available menu item. |
-| `PATCH` | `/api/V1/orders/:id/items/:itemId` | Change an item quantity. |
-| `DELETE` | `/api/V1/orders/:id/items/:itemId` | Remove an item while keeping at least one line. |
-| `PATCH` | `/api/V1/orders/:id/status` | Apply a valid order status transition. |
+```text
+GET    /api/V1/categories
+GET    /api/V1/categories/:id
+POST   /api/V1/categories
+PATCH  /api/V1/categories/:id
+DELETE /api/V1/categories/:id
+```
 
-The server reads names and prices from menu items, stores snapshots, calculates
-line totals and order totals, and performs related writes in transactions.
-Clients cannot supply monetary totals. A table can have only one active order.
-Creating an order marks its table `OCCUPIED`; paying or cancelling it releases
-the table to `AVAILABLE`.
+### Menu Items
 
-Status progression is:
+Admin and Staff can read menu items. Staff responses contain only available
+items. Mutations and image upload are Admin only.
+
+```text
+GET    /api/V1/menu-items
+GET    /api/V1/menu-items/:id
+POST   /api/V1/menu-items
+POST   /api/V1/menu-items/images
+PATCH  /api/V1/menu-items/:id
+DELETE /api/V1/menu-items/:id
+```
+
+Image upload accepts one JPEG, PNG, or WebP file up to 5 MB. When Cloudinary is
+not configured, only this optional endpoint is unavailable; all other menu and
+restaurant operations continue to work.
+
+### Restaurant Tables
+
+Admin and Staff:
+
+```text
+GET    /api/V1/tables
+GET    /api/V1/tables/:id
+POST   /api/V1/tables
+PATCH  /api/V1/tables/:id
+PATCH  /api/V1/tables/:id/status
+DELETE /api/V1/tables/:id
+```
+
+Supported table statuses are `AVAILABLE`, `OCCUPIED`, `RESERVED`, and
+`CLEANING`.
+
+### Orders
+
+Admin and Staff:
+
+```text
+GET    /api/V1/orders
+GET    /api/V1/orders/:id
+POST   /api/V1/orders
+POST   /api/V1/orders/:id/items
+PATCH  /api/V1/orders/:id/items/:itemId
+DELETE /api/V1/orders/:id/items/:itemId
+PATCH  /api/V1/orders/:id/status
+```
+
+Order listing supports optional `status`, `active`, and UTC `date` query
+filters. The frontend exposes active orders, completed history, and local order
+search.
+
+The normal status flow is:
 
 ```text
 PENDING -> PREPARING -> READY -> SERVED -> PAID
-    \          \          \
-     +----------+----------+-> CANCELLED
+    |           |          |
+    +-----------+----------+-> CANCELLED
 ```
 
-## Dashboard API
+The server owns prices and totals. It reads current menu data when adding an
+item, stores the historical snapshots, calculates each line total, and
+recalculates the order inside database transactions. Creating an order marks
+its table `OCCUPIED`; paying or cancelling releases the table to `AVAILABLE`.
 
-The overview route requires an `ADMIN` or `STAFF` bearer token:
+### Dashboard
 
-```http
+Admin and Staff:
+
+```text
 GET /api/V1/dashboard/overview
 ```
 
-It returns:
+The response includes occupied and total table counts, active orders by status,
+today's order count, today's paid revenue, and five recent orders.
 
-- occupied and total table counts;
-- total active orders;
-- active-order counts for `PENDING`, `PREPARING`, `READY`, and `SERVED`;
-- today's order count;
-- today's revenue from orders paid during the current UTC day; and
-- the five most recent orders with table number, status, item count, and total.
+### Users
 
-The response contains operational data only and never includes user credentials
-or password hashes. Quick-navigation links belong to the future frontend and do
-not require a backend endpoint.
+Admin only:
 
-## Admin User API
+```text
+GET    /api/V1/users
+GET    /api/V1/users/:id
+POST   /api/V1/users
+PATCH  /api/V1/users/:id
+DELETE /api/V1/users/:id
+```
 
-All user-management routes require an `ADMIN` bearer token. Public registration
-remains restricted to creating `STAFF` accounts.
+User responses select public fields only. Administrators cannot delete
+themselves or remove their own Admin role, and users linked to order history
+cannot be deleted.
 
-| Method | Route | Purpose |
+## Frontend Screens
+
+| Route | Screen | Access |
 | --- | --- | --- |
-| `GET` | `/api/V1/users` | List safe user profiles; accepts an optional `role` filter. |
-| `GET` | `/api/V1/users/:id` | Get one safe user profile. |
-| `POST` | `/api/V1/users` | Create a user; the role defaults to `STAFF`. |
-| `PATCH` | `/api/V1/users/:id` | Update name, email, password, or role. |
-| `DELETE` | `/api/V1/users/:id` | Delete a user without order history. |
+| `/login` | Sign in | Public |
+| `/` | Restaurant dashboard | Authenticated |
+| `/orders` | Active orders, history, and order details | Admin and Staff |
+| `/orders/new` | Create an order | Admin and Staff |
+| `/tables` | Table management | Admin and Staff |
+| `/menu-items` | Menu management/browsing | Admin and Staff, with role-aware controls |
+| `/categories` | Category management | Admin |
+| `/users` | User management | Admin |
 
-Passwords are hashed with the same production utility used by registration.
-Responses select only public fields and never include `passwordHash`.
-Administrators cannot delete themselves or remove their own administrator role,
-and users linked to historical orders cannot be deleted.
+## Validation, Errors, and Security
+
+- Zod validates environment variables, request bodies, parameters, and query
+  strings.
+- Malformed JSON and oversized request bodies receive explicit client errors.
+- The JSON body limit is 100 KB.
+- Menu image uploads are limited by type, file count, and size.
+- Prisma errors are translated into domain-safe responses where appropriate.
+- Unexpected errors return a generic `500` response without stack traces or
+  database details.
+- Helmet configures HTTP security headers.
+- Production CORS is controlled by `FRONTEND_URL` and is not a wildcard.
+- JWT verification restricts issuer, audience, signing algorithm, expiration,
+  payload shape, and role.
+- The application never logs passwords, password hashes, JWT secrets, or
+  Cloudinary secrets.
+- `.env` files are ignored while `.env.example` files remain committed.
+
+API errors use a consistent shape:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed",
+    "details": [
+      {
+        "field": "email",
+        "message": "A valid email address is required"
+      }
+    ]
+  }
+}
+```
 
 ## Quality Checks
 
-Backend:
+Run the complete backend verification:
 
 ```bash
 cd backend
 npm run type-check
 npm run prisma:validate
+npm run prisma:generate
 npm test
 npm run build
 ```
 
-Frontend:
+The integration suite starts an isolated PostgreSQL-compatible PGlite instance
+and covers authentication, authorization, menu and table management, orders,
+dashboard data, user management, validation, and important database invariants.
+
+Run the complete frontend verification:
 
 ```bash
 cd frontend
@@ -360,39 +536,48 @@ npm run build
 
 ## Development Progress
 
-- Day 1: project foundation, relational schema, authentication, RBAC, validation,
-  error handling, migrations, and secure account seeding — complete.
-- Day 2: category management, menu-item management, table management, role-aware
-  frontend screens, domain seed data, and integration tests — complete.
-- Day 3 backend: order creation, line-item management, totals, status
-  transitions, table assignment, database invariants, filters, and integration
-  tests — complete. The Day 3 frontend is intentionally pending.
-- Day 4 backend: protected dashboard overview metrics and recent-order data —
-  complete. The dashboard frontend is intentionally pending.
-- Backend administration: Admin-only user listing, creation, updates, role
-  assignment, password replacement, and safe deletion — complete. The
-  user-management frontend is intentionally pending.
+- Day 1 - foundation, Prisma schema, authentication, RBAC, security, migrations,
+  account seeding, and initial documentation: complete.
+- Day 2 - category, menu-item, and table APIs and frontend workflows plus domain
+  seed data: complete.
+- Day 3 - transactional order creation, item management, totals, status flow,
+  table linking, active/history views, and order detail UI: complete.
+- Day 4 - dashboard overview, loading and error states, Admin user management,
+  responsive navigation, and UI polish: complete.
+- Day 5 - final verification, documentation, and submission preparation: in
+  progress.
 
 ## Known Limitations
 
-- Authentication uses short-lived access tokens without refresh tokens.
-- Role changes and account deletion do not revoke an already-issued stateless
-  token; access ends when that short-lived token expires.
-- The frontend keeps the access token in session storage; it is cleared when the
-  browser session ends and is not shared between tabs.
-- Public registration creates `STAFF` accounts only; only an authenticated
-  administrator can assign the `ADMIN` role.
-- Order management, dashboard overview, and user management have no frontend
-  screens yet.
-- Order totals currently have no tax, discount, service-charge, or payment
-  processing logic; `total` equals `subtotal` for this MVP.
-- Date filtering uses UTC calendar days.
-- Reservation workflows beyond the table status are outside the assessment
-  scope.
+- There is no public registration screen. Public registration is available
+  through the API, while normal UI account provisioning is handled by an Admin.
+- Access tokens are kept in browser session storage and there is no refresh-token
+  flow. This is an accepted MVP trade-off.
+- Changing a role or deleting an account does not revoke an already-issued
+  stateless token; access ends when its short lifetime expires.
+- Date-based order filters and dashboard daily totals use UTC calendar days.
+- The current total equals the subtotal. Taxes, discounts, service charges, and
+  payment gateway integration are outside scope.
+- Optional image upload depends on Cloudinary and requires external credentials.
+- The optional report page, real-time updates, deployment, and demo video are not
+  included.
+- Reservation behavior is represented only by table status; scheduling and guest
+  details are outside scope.
 
-## Upcoming Work
+## Submission Notes
 
-The next step is to build the user-management, order, and dashboard frontend
-screens using the existing APIs, followed by responsive and error-state polish.
-Payments, inventory, real-time updates, and advanced reservation workflows
-remain outside the MVP unless the assessment scope changes.
+Before sharing the repository with reviewers:
+
+1. Verify that all required environment variables are documented and no local
+   `.env` file is tracked.
+2. Apply the committed migrations to a clean PostgreSQL database.
+3. Run the seed and record the selected demo passwords securely for the reviewer.
+4. Run all backend and frontend quality checks.
+5. Confirm the local setup instructions on a clean checkout.
+6. Provide the repository URL, demo credentials, and any optional deployed demo
+   or walkthrough link.
+
+## License
+
+This repository was created for the Merhaba ICT Solution technical assessment.
+No separate open-source license is currently provided.

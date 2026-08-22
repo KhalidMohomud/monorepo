@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from "react";
 
-import { apiRequest } from "@/lib/api";
+import { apiRequest, SESSION_EXPIRED_EVENT } from "@/lib/api";
+import { getAccessTokenExpiration } from "@/lib/auth-token";
 import type { AuthUser } from "@/lib/types";
 
 const TOKEN_STORAGE_KEY = "merhaba-access-token";
@@ -38,6 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setStatus("unauthenticated");
   }, []);
+
+  useEffect(() => {
+    window.addEventListener(SESSION_EXPIRED_EVENT, logout);
+
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, logout);
+  }, [logout]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const expiresAt = getAccessTokenExpiration(token);
+
+    if (!expiresAt || expiresAt <= Date.now()) {
+      queueMicrotask(logout);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(logout, expiresAt - Date.now());
+
+    return () => window.clearTimeout(timeoutId);
+  }, [logout, token]);
 
   useEffect(() => {
     const storedToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
