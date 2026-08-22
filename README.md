@@ -416,11 +416,11 @@ incorrect passwords.
 
 | Capability | Admin | Waiter | Cashier |
 | --- | :---: | :---: | :---: |
-| Dashboard overview | Yes | Yes | Yes |
+| Dashboard overview | Yes | No | NO |
 | Manage categories | Yes | No | No |
 | Create, update, and delete menu items | Yes | No | No |
 | View available menu items | Yes | Yes | Yes |
-| View restaurant tables | Yes | Yes | Yes |
+| View restaurant tables | Yes | NO | NO |
 | Manage restaurant tables and statuses | Yes | Yes | No |
 | View active orders | Yes | Yes | Yes |
 | View completed order history | Yes | No | No |
